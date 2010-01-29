@@ -1,0 +1,21 @@
+There's a number of households.  In each there are people talking among
+themselves (not all the time).  Every person has a voice (it's possible for two
+different persons to have the same voice).  The game has a number of
+prerecorded phrases for each voice.  There are two kinds of phrases: benign and
+suspicious.  There are two kinds of people: obedient citizens (who use only
+benign phrases) and terrorists (who use both benign and suspicious phrases).
+Every household has only one kind of people in it: either terrorists or
+obedient citizens.
+
+The point of the game is to eavesdrop conversations and send SWAT teams to
+households.  You get points if you capture terrorists.  You lose points if you
+arrest good citizens.
+
+You have 16 listening stations in front of you, each of which is capable of
+eavesdroping a single household.  You can tune in or tune out.  You hear
+all the conversations from listening stations you've turned on simultaneously,
+which makes the game difficult.  There are buttons to send SWAT teams.  When
+you do that, that particular listening station is switched to a new household
+after a certain time.
+
+There's a time limit for each level.
