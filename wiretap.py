@@ -185,7 +185,7 @@ class Game(object):
 
 def prototype5():
     # XXX attempting to use 44100 Hz causes weeeird problems and 100% CPU
-    pygame.mixer.pre_init(22050, -16, 2, 2048)
+    pygame.mixer.pre_init(44100, -16, 2, 2048)
     pygame.init()
     pygame.display.set_caption('Wiretap')
     pygame.mixer.set_num_channels(32)
@@ -232,10 +232,11 @@ def prototype5():
                         c.send_swat()
 
         # audio
+        active_channels = sum(c.listening and c.speaking for c in game.consoles) or 1
         for n, c in enumerate(game.consoles):
             channel = pygame.mixer.Channel(n)
             if c.listening:
-                channel.set_volume(1.0)
+                channel.set_volume(1.0 / active_channels)
             else:
                 channel.set_volume(0.0)
             h = c.household
