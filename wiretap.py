@@ -117,6 +117,10 @@ class Game(object):
         self.level = 1
         self.add_bad_guy()
 
+    @property
+    def running(self):
+        return not self.paused and self.time_limit >= 0
+
     def tick(self, delta_t):
         self.time_limit -= delta_t
         if self.time_limit < 0:
@@ -274,6 +278,7 @@ class Layout(object):
         self.screen = screen
         self.x = (screen.get_width() - self.size[0]) / 2
         self.y = (screen.get_height() - self.size[1]) / 2
+        self.pos = (self.x, self.y)
         self.background = pygame.image.load(self.background_src)
         self.speaking_inactive = pygame.image.load(self.speaking_inactive_src)
         self.speaking_active = pygame.image.load(self.speaking_active_src)
@@ -292,6 +297,12 @@ class Layout(object):
         x = self.grid_pos[0] + col * self.grid_cell_size[0]
         y = self.grid_pos[1] + row * self.grid_cell_size[1]
         return (self.x + x, self.y + y)
+
+    def console_idx(self, x, y):
+        col = (x - self.x - self.grid_pos[0]) // self.grid_cell_size[0]
+        row = (y - self.y - self.grid_pos[1]) // self.grid_cell_size[1]
+        if 0 <= row < self.grid_rows and 0 <= col < self.grid_cols:
+            return row * self.grid_cols + col
 
     def draw(self, game):
         screen = self.screen
@@ -322,10 +333,10 @@ class Layout(object):
             img = self.coffee_break_on
         else:
             img = self.coffee_break_off
-        self.center_img(img, self.coffee_break_pos)
+        self.center_img(img, self.pos, self.coffee_break_pos)
 
         img = self.quit_off
-        self.center_img(img, self.quit_pos)
+        self.center_img(img, self.pos, self.quit_pos)
 
         font = self.font
         t = font.render('Level: %d' % game.level, True, (255, 255, 255))
@@ -337,11 +348,31 @@ class Layout(object):
 
         if game.time_limit <= 0:
             t = self.font.render(self.game_over_text, True, self.game_over_color)
-            screen.blit(t, (self.x, self.y), self.game_over_pos)
+            self.center_img(t, self.pos, self.game_over_pos)
+
+    def click(self, game, (x, y)):
+        n = self.console_idx(x, y)
+        if n is None:
+            return
+        pos = self.console_pos(n)
+        c = game.consoles[n]
+        if game.running:
+            if self.in_button(x, y, self.listening_pos, self.listening_size, pos):
+                c.listening = not c.listening
+            if self.in_button(x, y, self.swat_pos, self.swat_size, pos):
+                c.send_swat()
+        if self.in_button(x, y, self.quit_pos, self.quit_size, self.pos):
+            pygame.event.post(QUIT)
+        if self.in_button(x, y, self.coffee_break_pos, self.coffee_break_size, self.pos):
+            game.paused = not game.paused
 
     def bye(self):
         t = self.font.render(self.bye_text, True, self.bye_color)
         self.center_img(t, (self.x, self.y), self.bye_pos)
+
+    def in_button(self, x, y, pos, size, delta=(0, 0)):
+        return (abs(x - pos[0] - delta[0]) <= size[0] and
+                abs(y - pos[1] - delta[1]) <= size[1])
 
     def center_img(self, img, pos, delta=(0, 0)):
         self.screen.blit(img, (pos[0] + delta[0] - img.get_width() / 2,
@@ -406,23 +437,7 @@ def prototype5():
                 pygame.display.update()
                 return
             if event.type == MOUSEBUTTONUP:
-                if (abs(event.pos[0] % (1024/4) - 140) <= 11
-                    and abs(event.pos[1] % (700/4) - 40) <= 11):
-                    row = event.pos[1] / (700/4)
-                    col = event.pos[0] / (1024/4)
-                    if 0 <= row < 4 and 0 <= col < 4:
-                        n = row * 4 + col
-                        c = game.consoles[n]
-                        c.listening = not c.listening
-                if (abs(event.pos[0] % (1024/4) - 100) <= 70
-                    and abs(event.pos[1] % (700/4) - 70) <= 15
-                    and game.time_limit > 0):
-                    row = event.pos[1] / (700/4)
-                    col = event.pos[0] / (1024/4)
-                    if 0 <= row < 4 and 0 <= col < 4:
-                        n = row * 4 + col
-                        c = game.consoles[n]
-                        c.send_swat()
+                layout.click(game, event.pos)
 
         # render audio
         active_channels = sum(c.listening and c.speaking for c in game.consoles) or 1
