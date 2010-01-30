@@ -29,7 +29,7 @@ class Console(object): # aka listening station
         self.swat_arrived = False
         self.swat_active = False
         self.swat_done = False
-        self.personality = None
+        self.personality = NOBODY
 
     @property
     def speaking(self):
@@ -41,6 +41,7 @@ class Console(object): # aka listening station
 
     def send_swat(self, delay=3):
         self.swat_pending = delay
+        self.listening = True
 
     def kill(self):
         self.active = False
@@ -67,6 +68,17 @@ class GoodGuy(object):
         return random.choice(voice.benign_phrases)
 
 
+class Nobody(object):
+
+    next_level_on_capture = False
+
+    score = -5
+
+    def get_next_phrase(self, voice):
+        return None
+
+
+NOBODY = Nobody()
 BAD_GUY = BadGuy()
 GOOD_GUY = GoodGuy()
 
