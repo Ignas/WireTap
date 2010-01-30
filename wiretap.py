@@ -79,7 +79,7 @@ class BadGuy(object):
 
     next_level_on_capture = True
 
-    score = 10
+    score = 1
 
     def get_next_phrase(self, voice):
         return random.choice(voice.all_phrases)
@@ -89,7 +89,7 @@ class GoodGuy(object):
 
     next_level_on_capture = False
 
-    score = -10
+    score = -1
 
     def get_next_phrase(self, voice):
         return random.choice(voice.benign_phrases)
@@ -99,7 +99,7 @@ class Nobody(object):
 
     next_level_on_capture = False
 
-    score = -5
+    score = 0
 
     def get_next_phrase(self, voice):
         return None
@@ -125,6 +125,8 @@ class Game(object):
         self.score = 0
         self.time_limit = 300
         self.level = 0
+        self.bad_guys_caught = 0
+        self.good_guys_detained = 0
         self.n_consoles = 16
         self.good_guys = []
         self.effects = []
@@ -194,6 +196,10 @@ class Game(object):
     def kill_guy(self, console):
         self.effects.append(ScoreEffect(console, console.personality.score))
         self.score += console.personality.score
+        if console.personality is GOOD_GUY:
+            self.good_guys_detained += 1
+        elif console.personality is BAD_GUY:
+            self.bad_guys_caught += 1
         next_level = console.personality.next_level_on_capture
         console.move_out()
         if next_level:
@@ -331,6 +337,15 @@ class Layout(object):
     font_src = 'freesansbold.ttf'
     font_size = 24
 
+    time_left_pos = 420, 666
+    time_left_color = (255, 255, 255)
+
+    bad_guys_pos = 733, 658
+    bad_guys_color = (25, 255, 25)
+
+    victims_pos = 733, 701
+    victims_color = (255, 25, 25)
+
     use_custom_cursor = False
 
     def __init__(self, screen):
@@ -407,13 +422,13 @@ class Layout(object):
         img = self.quit_off
         self.center_img(img, self.pos, self.quit_pos)
 
-        font = self.font
-        t = font.render('Level: %d' % game.level, True, (255, 255, 255))
-        self.center_img(t, (self.x + 512, self.y + 620))
-        t = font.render('Score: %d' % game.score, True, (255, 255, 255))
-        self.center_img(t, (self.x + 512, self.y + 650))
-        t = font.render('Time left: %d:%02d' % divmod(game.time_limit, 60), True, (255, 255, 255))
-        self.center_img(t, (self.x + 512, self.y + 680))
+        self.score_text(game.bad_guys_caught, self.bad_guys_color,
+                        self.pos, self.bad_guys_pos)
+        self.score_text(game.good_guys_detained, self.victims_color,
+                        self.pos, self.victims_pos)
+        self.score_text('%d:%02d' % divmod(game.time_limit, 60),
+                        self.time_left_color,
+                        self.pos, self.time_left_pos)
 
         for e in effects:
             e.draw(self.screen)
@@ -489,6 +504,11 @@ class Layout(object):
         self.screen.blit(img, (pos[0] + delta[0] - img.get_width() / 2,
                                pos[1] + delta[1] - img.get_height() / 2))
 
+    def score_text(self, text, color, pos, delta=(0, 0)):
+        img = self.font.render(str(text), True, color)
+        self.screen.blit(img, (pos[0] + delta[0] - img.get_width(),
+                               pos[1] + delta[1] - img.get_height()))
+
     def effect(self, game, ef):
         effect = getattr(self, 'effect_' + ef.__class__.__name__, None)
         if effect is not None:
@@ -548,6 +568,8 @@ def main():
     else:
         delta_t = 1.0 / 10 # fps; we don't need much
     last_t = time.time()
+    layout.draw(game, effects)
+    pygame.display.flip()
     while True:
         # interact
         for event in pygame.event.get():
