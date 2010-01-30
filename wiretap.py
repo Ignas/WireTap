@@ -400,10 +400,14 @@ def prototype5():
     pygame.init()
     pygame.display.set_caption('Wiretap')
     pygame.mixer.set_num_channels(32)
+
+    MODE = (1024, 768)
+    fullscreen = True
     screen = pygame.display.set_mode((1024, 768), FULLSCREEN)
     screen.fill((0, 0, 0))
 
     layout = Layout(screen)
+    del screen
 
     voices = []
     n = 1
@@ -435,6 +439,12 @@ def prototype5():
                 layout.bye()
                 pygame.display.update()
                 return
+            if event.type == KEYDOWN and event.unicode in ('f', 'F'):
+                fullscreen = not fullscreen
+                if fullscreen:
+                    layout.screen = pygame.display.set_mode(MODE, FULLSCREEN)
+                else:
+                    layout.screen = pygame.display.set_mode(MODE, 0)
             if event.type == MOUSEBUTTONUP:
                 layout.click(game, event.pos)
 
@@ -461,7 +471,7 @@ def prototype5():
         # draw
         layout.draw(game)
         for e in effects:
-            e.draw(screen)
+            e.draw(layout.screen)
         pygame.display.flip()
 
         # wait for next frame
