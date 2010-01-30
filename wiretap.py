@@ -368,6 +368,8 @@ class Layout(object):
     def bye(self):
         t = self.font.render(self.bye_text, True, self.bye_color)
         self.center_img(t, (self.x, self.y), self.bye_pos)
+        img = self.quit_on
+        self.center_img(img, self.pos, self.quit_pos)
 
     def in_button(self, x, y, pos, size, delta=(0, 0)):
         return (abs(x - pos[0] - delta[0]) <= size[0] and
