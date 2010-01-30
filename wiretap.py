@@ -326,6 +326,8 @@ class Layout(object):
     font_src = 'freesansbold.ttf'
     font_size = 24
 
+    use_custom_cursor = False
+
     def __init__(self, screen):
         self.screen = screen
         self.x = (screen.get_width() - self.size[0]) / 2
@@ -418,9 +420,14 @@ class Layout(object):
             t = self.font.render(self.paused_text, True, self.paused_color)
             self.center_img(t, (self.x, self.y), self.paused_pos)
 
-        x, y = pygame.mouse.get_pos()
+        if self.use_custom_cursor:
+            pygame.mouse.set_visible(False)
+            self.last_mouse_pos = pygame.mouse.get_pos()
+            self.draw_cursor()
+
+    def draw_cursor(self):
+        x, y = self.last_mouse_pos
         self.screen.blit(self.cursor[0], (x - self.cursor[1], y - self.cursor[2]))
-        self.last_mouse_pos = x, y
 
     def action(self, game, (x, y)):
         if self.in_button(x, y, self.quit_pos, self.quit_size, self.pos, self.quit_off):
@@ -457,8 +464,8 @@ class Layout(object):
         img = self.quit_on
         self.center_img(img, self.pos, self.quit_pos)
 
-        x, y = self.last_mouse_pos
-        self.screen.blit(self.cursor[0], (x - self.cursor[1], y - self.cursor[2]))
+        if self.use_custom_cursor:
+            self.draw_cursor()
 
     def in_button(self, x, y, pos, size, delta=(0, 0), button=None):
         if (abs(x - pos[0] - delta[0]) < size[0] / 2 and
@@ -503,7 +510,6 @@ def main():
     pygame.init()
     pygame.display.set_caption('Wiretap')
     pygame.mixer.set_num_channels(32)
-    pygame.mouse.set_visible(False)
 
     MODE = (1024, 768)
     fullscreen = True
