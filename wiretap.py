@@ -219,7 +219,8 @@ def prototype5():
                         c = game.consoles[n]
                         c.listening = not c.listening
                 if (abs(event.pos[0] % (1024/4) - 100) <= 70
-                    and abs(event.pos[1] % (700/4) - 70) <= 15):
+                    and abs(event.pos[1] % (700/4) - 70) <= 15
+                    and game.time_limit > 0):
                     row = event.pos[1] / (700/4)
                     col = event.pos[0] / (1024/4)
                     if 0 <= row < 4 and 0 <= col < 4:
