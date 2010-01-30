@@ -106,6 +106,7 @@ class Game(object):
         self.n_consoles = 16
         self.good_guys = []
         self.effects = []
+        self.paused = False
 
         for n in range(self.n_consoles):
             self.consoles.append(Console())
@@ -222,13 +223,157 @@ class ScoreBubble(object):
             screen.blit(self.surface, (int(self.x), int(self.y)))
 
 
+class Layout(object):
+
+    size = (1024, 768)
+
+    background_src = "graphics/Background.png"
+
+    grid_pos = (20, 20)
+    grid_rows = 4
+    grid_cols = 4
+    grid_cell_size = (251, 145)
+
+    speaking_pos = 195, 50
+    speaking_inactive_src = "graphics/Lamp_inactive.png"
+    speaking_active_src = "graphics/Lamp_active.png"
+
+    listening_pos = 80, 40
+    listening_size = 128, 64
+    listening_off_src = "graphics/Off.png"
+    listening_on_src = "graphics/On.png"
+
+    swat_pos = 80, 100
+    swat_size = 128, 64
+    swat_off_src = "graphics/Send_swat.png"
+    swat_on_src = "graphics/Send_swat_pressed.png"
+
+    score_pos = 155, 90
+    score_positive_color = (20, 200, 20)
+    score_negative_color = (200, 20, 20)
+
+    coffee_break_pos = 132, 651
+    coffee_break_size = 128, 64
+    coffee_break_off_src = "graphics/Break.png"
+    coffee_break_on_src = "graphics/Break_pressed.png"
+
+    quit_pos = 888, 651
+    quit_size = 128, 64
+    quit_off_src = "graphics/Quit.png"
+    quit_on_src = "graphics/Quit_pressed.png"
+
+    bye_pos = 512, 340
+    bye_color = (254, 232, 123)
+    bye_text = 'Bye!'
+
+    game_over_pos = 512, 310
+    game_over_color = (254, 232, 123)
+    game_over_text = 'Game Over'
+
+    def __init__(self, screen):
+        self.screen = screen
+        self.x = (screen.get_width() - self.size[0]) / 2
+        self.y = (screen.get_height() - self.size[1]) / 2
+        self.background = pygame.image.load(self.background_src)
+        self.speaking_inactive = pygame.image.load(self.speaking_inactive_src)
+        self.speaking_active = pygame.image.load(self.speaking_active_src)
+        self.listening_on = pygame.image.load(self.listening_on_src)
+        self.listening_off = pygame.image.load(self.listening_off_src)
+        self.swat_on = pygame.image.load(self.swat_on_src)
+        self.swat_off = pygame.image.load(self.swat_off_src)
+        self.coffee_break_on = pygame.image.load(self.coffee_break_on_src)
+        self.coffee_break_off = pygame.image.load(self.coffee_break_off_src)
+        self.quit_on = pygame.image.load(self.quit_on_src)
+        self.quit_off = pygame.image.load(self.quit_off_src)
+        self.font = pygame.font.Font(None, 24)
+
+    def console_pos(self, n):
+        row, col = divmod(n, self.grid_cols)
+        x = self.grid_pos[0] + col * self.grid_cell_size[0]
+        y = self.grid_pos[1] + row * self.grid_cell_size[1]
+        return (self.x + x, self.y + y)
+
+    def draw(self, game):
+        screen = self.screen
+        # XXX maybe fill areas outside background, if any
+        screen.blit(self.background, (self.x, self.y))
+        for n, c in enumerate(game.consoles):
+            pos = self.console_pos(n)
+
+            if c.speaking:
+                img = self.speaking_active
+            else:
+                img = self.speaking_inactive
+            self.center_img(img, pos, self.speaking_pos)
+
+            if c.listening:
+                img = self.listening_on
+            else:
+                img = self.listening_off
+            self.center_img(img, pos, self.listening_pos)
+
+            if c.swat_engaged:
+                img = self.swat_on
+            else:
+                img = self.swat_off
+            self.center_img(img, pos, self.swat_pos)
+
+        if game.paused:
+            img = self.coffee_break_on
+        else:
+            img = self.coffee_break_off
+        self.center_img(img, self.coffee_break_pos)
+
+        img = self.quit_off
+        self.center_img(img, self.quit_pos)
+
+        font = self.font
+        t = font.render('Level: %d' % game.level, True, (255, 255, 255))
+        self.center_img(t, (self.x + 512, self.y + 620))
+        t = font.render('Score: %d' % game.score, True, (255, 255, 255))
+        self.center_img(t, (self.x + 512, self.y + 650))
+        t = font.render('Time left: %d:%02d' % divmod(game.time_limit, 60), True, (255, 255, 255))
+        self.center_img(t, (self.x + 512, self.y + 680))
+
+        if game.time_limit <= 0:
+            t = self.font.render(self.game_over_text, True, self.game_over_color)
+            screen.blit(t, (self.x, self.y), self.game_over_pos)
+
+    def bye(self):
+        t = self.font.render(self.bye_text, True, self.bye_color)
+        self.center_img(t, (self.x, self.y), self.bye_pos)
+
+    def center_img(self, img, pos, delta=(0, 0)):
+        self.screen.blit(img, (pos[0] + delta[0] - img.get_width() / 2,
+                               pos[1] + delta[1] - img.get_height() / 2))
+
+    def effect(self, game, ef):
+        effect = getattr(self, 'effect_' + ef.__class__.__name__, None)
+        if effect is not None:
+            return effect(game, ef)
+
+    def effect_ScoreEffect(self, game, ef):
+        if ef.score > 0:
+           color = self.score_positive_color
+        else:
+           color = self.score_negative_color
+        n = game.consoles.index(ef.console)
+        x, y = self.console_pos(n)
+        return ScoreBubble(self.x + x + self.score_pos[0],
+                           self.y + y + self.score_pos[1],
+                           '%+d' % ef.score, color, self.font)
+
+
 def prototype5():
     # XXX attempting to use 44100 Hz causes 100% CPU
     pygame.mixer.pre_init(22050, -16, 2, 2048)
     pygame.init()
     pygame.display.set_caption('Wiretap')
     pygame.mixer.set_num_channels(32)
-    screen = pygame.display.set_mode((1024, 700), 0)
+    screen = pygame.display.set_mode((1024, 768), FULLSCREEN)
+    screen.fill((0, 0, 0))
+
+    layout = Layout(screen)
 
     voices = []
     n = 1
@@ -257,9 +402,7 @@ def prototype5():
         for event in pygame.event.get():
             if event.type == QUIT or event.type == KEYDOWN and (
                 event.key == K_ESCAPE or event.unicode in ('q', 'Q')):
-                t = font.render('Bye!', True, (254, 232, 123))
-                screen.blit(t, ((1024 - t.get_width()) / 2,
-                                (680 - t.get_height()) / 2))
+                layout.bye()
                 pygame.display.update()
                 return
             if event.type == MOUSEBUTTONUP:
@@ -302,64 +445,23 @@ def prototype5():
                 c.swat_done = True
 
         # draw
-        screen.fill((0, 0, 0))
-        for n, c in enumerate(game.consoles):
-            row, col = divmod(n, 4)
-            x, y = col * 1024/4, row * 700/4
-            if c.speaking:
-                color = (100, 200, 0)
-                r = 15
-            else:
-                color = (0, 100, 0)
-                r = 10
-            pygame.draw.circle(screen, color, (x + 40, y + 40), r)
-            if c.listening:
-                color = (200, 150, 10)
-            else:
-                color = (100, 50, 0)
-            pygame.draw.circle(screen, color, (x + 140, y + 40), 10)
-            if c.swat_pending:
-                color = (255, 23, 34)
-                s = 'SEND SWAT: %d' % c.swat_pending
-            elif c.swat_active:
-                color = (255, 23, 34)
-                s = 'SEND SWAT: !'
-            else:
-                color = (175, 23, 34)
-                s = 'SEND SWAT'
-            t = font.render(s, True, color)
-            screen.blit(t, (x + 100 - t.get_width() / 2, y + 70))
+        layout.draw(game)
         for e in effects:
             e.draw(screen)
-
-        t = font.render('Level: %d' % game.level, True, (255, 255, 255))
-        screen.blit(t, (10, 620))
-        t = font.render('Score: %d' % game.score, True, (255, 255, 255))
-        screen.blit(t, (10, 650))
-        t = font.render('Time left: %d:%02d' % divmod(game.time_limit, 60), True, (255, 255, 255))
-        screen.blit(t, (10, 680))
-
-        if game.time_limit <= 0:
-            t = font.render('Game over', True, (254, 232, 123))
-            screen.blit(t, ((1024 - t.get_width()) / 2,
-                            (680 - t.get_height()) / 2 - 30))
-
         pygame.display.flip()
-        # wait
+
+        # wait for next frame
         time.sleep(delta_t)
+
+        # game logic
+        if game.paused:
+            continue
         game.tick(delta_t)
         effects = [e for e in effects if e.tick(delta_t)]
         while game.effects:
-            ef = game.effects.pop()
-            if isinstance(ef, ScoreEffect):
-                if ef.score > 0:
-                   color = (20, 200, 20)
-                else:
-                   color = (200, 20, 20)
-                n = game.consoles.index(ef.console)
-                row, col = divmod(n, 4)
-                x, y = col * 1024/4, row * 700/4
-                effects.append(ScoreBubble(x + 100, y + 40, '%+d' % ef.score, color, font))
+            effect = layout.effect(game, game.effects.pop())
+            if effect:
+                effects.append(effect)
 
 
 if __name__ == '__main__':
