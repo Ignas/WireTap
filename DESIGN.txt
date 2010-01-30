@@ -19,3 +19,215 @@ you do that, that particular listening station is switched to a new household
 after a certain time.
 
 There's a time limit for each level.
+
+
+"""
+The terrorist sound bites are spaced 5-15 seconds apart, so you have
+to listen at most for 15 seconds to determine if someone is a
+terrorist.
+
+An example timeline:
+
+Level 1
+
+1 sound playing, he is a terrorist. (The first guy is *always* a
+terrorist.)
+
+# Maybe we should prescript it for "tutorial purposes" so that when
+# the "suspicious" soundbite is played, the "button" to send swat
+# flashes. (maybe a note - this is da bad guy, send the SWAT)
+
+When you send swat team, the "police" soundbite is played on the
+channel, and 2 new channels "open". Which is in fact level 2.
+
+Level 2
+
+2 new channels open. (2 new 0 old)
+1 of those guys is a terrorist, the other one is the good guy. When
+you send the SWAT to the house of the terroris - level 3 starts.
+
+Level 3
+
+(unless you sent a swat team to the house of the good guy, the good
+guy channel is still there.)
+
+2 new channels open. (2 new 1 old - unless you killed a good guy) One
+of those is a terrorist. When you kill the "next" terrorist the next
+level starts.
+
+Level 4
+
+3 new channels open 1 of them a terrorist (3 new, 1 old, the "old one
+from the second level" expires)
+
+Level 5
+
+3 new channels open 2 are terrorists 1 old from level 3 expires (3 new, 2 old)
+
+Level 6 (all levels start when you kill 1 terrorist)
+
+3 new channels open 1 is terrorist 1 from level 4 expires (3 new, 3 old)
+
+Level 7
+
+3 new channels open 1 is terrorist 1 from level 5 expires (3 new, 4 old)
+
+
+I think I am seeing a pattern:
+
+# LS level = 1, bg = 1
+
+bg--
+========================================================================
+
+level++ -> bg++, gg++
+# LS level = 2, bg = 1, gg = 1
+
+bg--
+========================================================================
+
+level++ -> bg++, gg++
+# LS level = 3, bg = 1, gg = 2
+
+bg--
+========================================================================
+
+level++ -> bg++, gg += 2, gg--
+# LS level = 4, bg = 1, gg = 3
+
+bg--
+========================================================================
+
+level++ -> bg += 2, gg++, gg--
+# LS level = 5, bg = 2, gg = 3
+
+bg--
+========================================================================
+
+level++ -> bg++, gg += 2, gg--
+# LS level = 6, bg = 2, gg = 4
+
+bg--
+========================================================================
+
+level++ -> bg++, gg += 2, gg--
+# LS level = 7, bg = 2, gg = 6
+
+bg--
+========================================================================
+
+level++ -> bg += 2, gg++, gg--
+# LS level = 8, bg = 3, gg = 6
+
+bg--
+========================================================================
+
+level++ -> bg ++, gg += 3, gg -= 2
+# LS level = 9, bg = 3, gg = 7
+
+bg--
+========================================================================
+
+level++ -> bg ++, gg += 3, gg -= 2
+# LS level = 10, bg = 3, gg = 8
+
+bg--
+========================================================================
+
+level++ -> bg ++, gg += 3, gg -= 2
+# LS level = 11, bg = 3, gg = 9
+
+bg--
+========================================================================
+
+level++ -> bg += 2, gg += 2, gg -= 2
+# LS level = 12, bg = 4, gg = 9
+
+bg--
+========================================================================
+
+Ok, so - neither good guys nor bad guys "time out", which is cool.
+
+The rule of level progression is this:
+
+Start with 1 bad guy.
+
+Next level gets activated when you kill a bad guy.
+
+<magic happens>
+
+Let's do it so it would not "depend" on guys getting killed :D
+
+# LS level = 1, bg = 1
+============================================================= dg = 1, db = 1, mg = 0
+level++ -> bg++, gg++
+# LS level = 2, bg = 2, gg = 1
+============================================================= dg = 1, db = 1, mg = 0
+level++ -> bg++, gg++
+# LS level = 3, bg = 3, gg = 2
+============================================================= dg = 1, db = 1, mg = 1
+level++ -> bg++, gg++, "move 1 oldest gg, mark it as new"
+# LS level = 4, bg = 4, gg = 3
+============================================================= dg = 0, db = 2, mg = 1
+level++ -> bg += 2, "move 1 oldest gg, mark it as new"
+# LS level = 5, bg = 6, gg = 3
+============================================================= dg = 1, db = 1, mg = 1
+level++ -> bg++, gg++, "move 1 oldest gg, mark it as new"
+# LS level = 6, bg = 7, gg = 4
+============================================================= dg = 1, db = 1, mg = 1 ?? maybe 2
+level++ -> bg++, gg++, "move 1 oldest gg, mark it as new"
+# LS level = 7, bg = 8, gg = 5
+============================================================= dg = 0, db = 2, mg = 1 ?? maybe 2
+level++ -> bg += 2, "move 1 oldest gg, mark it as new"
+# LS level = 8, bg = 10, gg = 6
+============================================================= dg = 1, db = 1, mg = 2
+level++ -> bg++, gg++, "move 2 oldest gg, mark them as new"
+# LS level = 9, bg = 11, gg = 7
+============================================================= dg = 1, db = 1, mg = 2
+level++ -> bg ++, gg++, "move 2 oldest gg, mark them as new"
+# LS level = 10, bg = 12, gg = 8
+============================================================= dg = 1, db = 1, mg = 2
+level++ -> bg ++, gg++, "move 2 oldest gg, mark them as new"
+# LS level = 11, bg = 13, gg = 9
+============================================================= dg = 1, db = 1, mg = 2
+level++ -> bg += 2, "move 2 oldest gg, mark them as new"
+# LS level = 12, bg = 15, gg = 9
+============================================================= dg = 0, db = 2, mg = 2
+
+"""
+
+"""
+
+Script:
+
+hPolice:
+
+Fire in the hole! <kaboom> FBI! Everybody down! <gunshots>
+
+endings:
+BGE1: You will not be making any nucular weapons!
+BGE2: Stop what you are doing, and assume the Party Escort Submission
+Position.
+BGE3: No one is killing the president! Not on my watch!
+
+Female:
+GGE1: Emm.. Uh... Someone please call 911, I think she just had a
+heart attack.
+GGE2: Calm down madam, just calm down, we are not going to kill you,
+please ... stop crying.
+
+Male:
+GGE1: Emm.. Uh... Sir, we are really sorry, yes sir, yes the person
+who sent us will be promptly fired.
+GGE2: Emm.. Uh... Someone please call 911, I think he just had a heart
+attack.
+
+Guys:
+
+Bla bla bla, bla bla. Bla bla kill bla. Bla bla bla deception bla bla. Bla bomb bla.
+
+Mu mu mu, mu mu. Mu mu kill mu. Mu mu mu deception mu mu. Mu bomb mu.
+
+Mi mi mi, mi mi. Mi mi kill mi. Mi mi mi deception mi mi. Mi bomb mi.
+
+"""
