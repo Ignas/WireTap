@@ -30,7 +30,7 @@ class Console(object): # aka listening station
 
     @property
     def speaking(self):
-        return self.active
+        return self.active or self.swat_active
 
     def get_next_phrase(self):
         if self.personality:
@@ -243,6 +243,9 @@ def prototype5():
             if c.swat_pending:
                 color = (255, 23, 34)
                 s = 'SEND SWAT: %d' % c.swat_pending
+            elif c.swat_active:
+                color = (255, 23, 34)
+                s = 'SEND SWAT: !'
             else:
                 color = (175, 23, 34)
                 s = 'SEND SWAT'
