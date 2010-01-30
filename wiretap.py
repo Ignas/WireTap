@@ -61,16 +61,24 @@ class Household(object):
     def initiate_conversation(self, length):
         self.pending_conversation = self.get_conversation(length)
 
+    def stop_conversation(self):
+        self.pending_conversation = []
+        self.current_phrase = None
+
 
 class Console(object): # aka listening station
 
     def __init__(self, household):
         self.household = household
         self.listening = False
+        self.swat_pending = 0
 
     @property
     def speaking(self):
         return self.household.current_phrase is not None
+
+    def send_swat(self, delay=5):
+        self.swat_pending = delay
 
 
 class Level(object):
@@ -78,10 +86,11 @@ class Level(object):
     n_consoles = 16
     range_n_persons_per_household = 2, 3
     range_conversation_length = 3, 7
-    time_limit = 100 # seconds
-    expected_pause_length = 10
+    time_limit = 300 # seconds
+    expected_pause_length = 5
+    chance_of_terrorism = 0.1
 
-    def __init__(self, n_terrorists, max_simultaneous_conversations=2):
+    def __init__(self, n_terrorists, max_simultaneous_conversations=8):
         self.n_terrorists = n_terrorists
         self.max_simultaneous_conversations = max_simultaneous_conversations
         self.passing_score = Terrorist.score * n_terrorists / 2
@@ -116,12 +125,22 @@ class Game(object):
                 n_terrorists -= 1
             else:
                 person_maker = Citizen
-            n_persons = level.pick_n_persons_per_household()
-            household = Household([person_maker(random.choice(self.voices))
-                                   for m in range(n_persons)])
+            household = self.make_new_household(person_maker)
             self.consoles.append(Console(household))
         random.shuffle(self.consoles)
         self.start_new_conversation()
+
+    def pick_replacement_person(self):
+        if random.random() < self.level.chance_of_terrorism:
+            return Terrorist
+        else:
+            return Citizen
+
+    def make_new_household(self, person_maker):
+        n_persons = self.level.pick_n_persons_per_household()
+        household = Household([person_maker(random.choice(self.voices))
+                               for m in range(n_persons)])
+        return household
 
     def count_active_conversations(self):
         return sum(c.speaking for c in self.consoles)
@@ -144,6 +163,15 @@ class Game(object):
             return # end of level
         if self.should_start_new_conversation(delta_t):
             self.start_new_conversation()
+        for c in self.consoles:
+            if c.swat_pending:
+                c.swat_pending -= delta_t
+                if c.swat_pending <= 0:
+                    c.swat_pending = False
+                    c.household.stop_conversation()
+                    for p in c.household.tenants:
+                        self.score += p.score
+                    c.household = self.make_new_household(self.pick_replacement_person())
 
     def start_new_conversation(self):
         silent_households = self.get_silent_households()
@@ -171,9 +199,6 @@ def prototype5():
     level1 = Level(3)
     game = Game(voices, level1)
 
-    for c in game.consoles:
-        c.listening = True
-
     font = pygame.font.Font(None, 24)
 
     while True:
@@ -195,6 +220,15 @@ def prototype5():
                         n = row * 4 + col
                         c = game.consoles[n]
                         c.listening = not c.listening
+                if (abs(event.pos[0] % (1024/4) - 100) <= 70
+                    and abs(event.pos[1] % (700/4) - 70) <= 15):
+                    row = event.pos[1] / (700/4)
+                    col = event.pos[0] / (1024/4)
+                    if 0 <= row < 4 and 0 <= col < 4:
+                        n = row * 4 + col
+                        c = game.consoles[n]
+                        c.send_swat()
+
         # audio
         for n, c in enumerate(game.consoles):
             channel = pygame.mixer.Channel(n)
@@ -208,6 +242,8 @@ def prototype5():
                 channel.queue(h.current_phrase)
             elif h.current_phrase is not None and not channel.get_busy():
                 h.current_phrase = None
+            elif h.current_phrase is None and channel.get_busy():
+                channel.stop()
         # draw
         screen.fill((0, 0, 0))
         for n, c in enumerate(game.consoles):
@@ -215,7 +251,7 @@ def prototype5():
             x, y = col * 1024/4, row * 700/4
             if c.speaking:
                 color = (100, 200, 0)
-                r = 11
+                r = 15
             else:
                 color = (0, 100, 0)
                 r = 10
@@ -225,9 +261,25 @@ def prototype5():
             else:
                 color = (100, 50, 0)
             pygame.draw.circle(screen, color, (x + 140, y + 40), 10)
+            if c.swat_pending:
+                color = (255, 23, 34)
+                s = 'SEND SWAT: %d' % c.swat_pending
+            else:
+                color = (175, 23, 34)
+                s = 'SEND SWAT'
+            t = font.render(s, True, color)
+            screen.blit(t, (x + 100 - t.get_width() / 2, y + 70))
 
-        t = font.render('Time left: %d' % game.time_limit, True, (255, 255, 255))
+        t = font.render('Score: %d' % game.score, True, (255, 255, 255))
+        screen.blit(t, (10, 650))
+        t = font.render('Time left: %d:%02d' % divmod(game.time_limit, 60), True, (255, 255, 255))
         screen.blit(t, (10, 680))
+
+        if game.time_limit <= 0:
+            t = font.render('Game over', True, (254, 232, 123))
+            screen.blit(t, ((1024 - t.get_width()) / 2,
+                            (680 - t.get_height()) / 2 - 30))
+
         pygame.display.flip()
         # wait
         time.sleep(0.1)
