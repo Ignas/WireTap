@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import random
 import time
+import glob
 
 import pygame
 from pygame.locals import *
@@ -163,13 +164,18 @@ def prototype5():
     pygame.mixer.set_num_channels(32)
     screen = pygame.display.set_mode((1024, 700), 0)
 
-    v1 = Voice()
-    v1.benign_phrases = map(pygame.mixer.Sound,
-                            ['1_1.wav', '1_2.wav', '1_3.wav'])
-    v1.suspicious_phrases = map(pygame.mixer.Sound,
-                                ['1_deception.wav', '1_fire.wav',
-                                 '1_wire.wav', '1_wire.wav'])
-    voices = [v1]
+    voices = []
+    n = 1
+    while True:
+        v = Voice()
+        v.benign_phrases = map(pygame.mixer.Sound,
+                               glob.glob('sounds/p%d_good*.wav' % n))
+        v.suspicious_phrases = map(pygame.mixer.Sound,
+                                   glob.glob('sounds/p%d_bad*.wav' % n))
+        if not v.benign_phrases or not v.suspicious_phrases:
+            break
+        n += 1
+        voices.append(v)
     game = Game(voices)
 
     swat_sound = pygame.mixer.Sound('swat.wav')
@@ -206,6 +212,7 @@ def prototype5():
 
         # render audio
         active_channels = sum(c.listening and c.speaking for c in game.consoles) or 1
+        active_channels = (active_channels + 1.0) / 2 # slower attenuation
         for n, c in enumerate(game.consoles):
             channel = pygame.mixer.Channel(n)
             if c.listening:
