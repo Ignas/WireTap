@@ -323,7 +323,7 @@ class Layout(object):
     cursor_button_src = "graphics/Cursor_hot.png"
     cursor_button_hotspot = (9, 2)
 
-    font_src = 'freesansbold.ttf
+    font_src = 'freesansbold.ttf'
     font_size = 24
 
     def __init__(self, screen):
