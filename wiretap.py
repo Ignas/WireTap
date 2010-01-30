@@ -193,7 +193,7 @@ class Game(object):
 
 class ScoreBubble(object):
 
-    def __init__(self, x, y, text, color, font, time=3, dx=0, dy=-10):
+    def __init__(self, x, y, text, color, font, time=3, dx=0, dy=-10, shadow=None):
         self.x = x
         self.y = y
         self.dx = dx
@@ -202,6 +202,11 @@ class ScoreBubble(object):
         self.color = color
         self.font = font
         self.surface = font.render(text, True, color)
+        self.shadow = shadow
+        if shadow:
+            self.shadow_surface = font.render(text, True, shadow)
+        else:
+            self.shadow_surface = None
         self.x -= self.surface.get_width() / 2
         self.y -= self.surface.get_height() / 2
         self.time_left = time
@@ -220,10 +225,17 @@ class ScoreBubble(object):
         r, g, b = r * alpha, g * alpha, b * alpha
         self.surface = self.font.render(self.text, True, (r, g, b))
 
+        if self.shadow:
+            r, g, b = self.shadow
+            r, g, b = r * alpha, g * alpha, b * alpha
+            self.shadow_surface = self.font.render(self.text, True, (r, g, b))
+
     def draw(self, screen):
         if self.time_left > 0:
             if self.time_left < 1:
                 self.set_alpha(self.time_left)
+            if self.shadow_surface:
+                screen.blit(self.shadow_surface, (int(self.x) + 1, int(self.y) + 1))
             screen.blit(self.surface, (int(self.x), int(self.y)))
 
 
@@ -255,7 +267,9 @@ class Layout(object):
 
     score_pos = 155, 90
     score_positive_color = (20, 200, 20)
+    score_positive_shadow = (0, 20, 0)
     score_negative_color = (200, 20, 20)
+    score_negative_shadow = (20, 0, 0)
 
     coffee_break_pos = 132, 651
     coffee_break_size = 128, 64
@@ -391,13 +405,16 @@ class Layout(object):
     def effect_ScoreEffect(self, game, ef):
         if ef.score > 0:
            color = self.score_positive_color
+           shadow = self.score_positive_shadow
         else:
            color = self.score_negative_color
+           shadow = self.score_negative_shadow
         n = game.consoles.index(ef.console)
         x, y = self.console_pos(n)
         return ScoreBubble(self.x + x + self.score_pos[0],
                            self.y + y + self.score_pos[1],
-                           '%+d' % ef.score, color, self.font)
+                           '%+d' % ef.score, color, self.font,
+                           shadow=shadow)
 
 
 def prototype5():
