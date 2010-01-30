@@ -83,6 +83,13 @@ BAD_GUY = BadGuy()
 GOOD_GUY = GoodGuy()
 
 
+class ScoreEffect(object):
+
+    def __init__(self, console, score):
+        self.console = console
+        self.score = score
+
+
 class Game(object):
 
     def __init__(self, voices):
@@ -93,6 +100,7 @@ class Game(object):
         self.level = 0
         self.n_consoles = 16
         self.good_guys = []
+        self.effects = []
 
         for n in range(self.n_consoles):
             self.consoles.append(Console())
@@ -146,6 +154,7 @@ class Game(object):
         self.add_good_guy()
 
     def kill_guy(self, console):
+        self.effects.append(ScoreEffect(console, console.personality.score))
         self.score += console.personality.score
         if console.personality.next_level_on_capture:
             self.next_level()
@@ -170,6 +179,35 @@ class Game(object):
 
         for n in range(mg):
             self.move_good_guy()
+
+
+class ScoreBubble(object):
+
+    def __init__(self, x, y, text, color, font, time=3, dx=0, dy=-10):
+        self.x = x
+        self.y = y
+        self.dx = dx
+        self.dy = dy
+        self.text = text
+        self.color = color
+        self.font = font
+        self.surface = font.render(text, True, color)
+        self.x -= self.surface.get_width() / 2
+        self.y -= self.surface.get_height() / 2
+        self.time_left = time
+
+    def tick(self, delta_t):
+        self.time_left -= delta_t
+        if self.time_left < 0:
+            self.time_left = 0
+            return False
+        self.x += self.dx * delta_t
+        self.y += self.dy * delta_t
+        return True
+
+    def draw(self, screen):
+        if self.time_left > 0:
+            screen.blit(self.surface, (int(self.x), int(self.y)))
 
 
 def prototype5():
@@ -197,8 +235,11 @@ def prototype5():
 
     swat_sound = pygame.mixer.Sound('swat.wav')
 
+    effects = []
+
     font = pygame.font.Font(None, 24)
 
+    delta_t = 0.1
     while True:
         # interact
         for event in pygame.event.get():
@@ -276,6 +317,8 @@ def prototype5():
                 s = 'SEND SWAT'
             t = font.render(s, True, color)
             screen.blit(t, (x + 100 - t.get_width() / 2, y + 70))
+        for e in effects:
+            e.draw(screen)
 
         t = font.render('Level: %d' % game.level, True, (255, 255, 255))
         screen.blit(t, (10, 620))
@@ -291,8 +334,20 @@ def prototype5():
 
         pygame.display.flip()
         # wait
-        time.sleep(0.1)
-        game.tick(0.1)
+        time.sleep(delta_t)
+        game.tick(delta_t)
+        effects = [e for e in effects if e.tick(delta_t)]
+        while game.effects:
+            ef = game.effects.pop()
+            if isinstance(ef, ScoreEffect):
+                if ef.score > 0:
+                   color = (20, 200, 20)
+                else:
+                   color = (200, 20, 20)
+                n = game.consoles.index(ef.console)
+                row, col = divmod(n, 4)
+                x, y = col * 1024/4, row * 700/4
+                effects.append(ScoreBubble(x + 100, y + 40, '%+d' % ef.score, color, font))
 
 
 if __name__ == '__main__':
