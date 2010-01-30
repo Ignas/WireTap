@@ -310,7 +310,7 @@ class Layout(object):
     bye_color = (254, 232, 123)
     bye_text = 'Bye!'
 
-    paused_pos = 512, 340
+    paused_pos = 512, 370
     paused_color = (254, 232, 123)
     paused_text = 'Enjoy your coffee!'
 
