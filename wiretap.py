@@ -46,6 +46,8 @@ class BadGuy(object):
 
     next_level_on_capture = True
 
+    score = 10
+
     def get_next_phrase(self, voice):
         return random.choice(voice.all_phrases)
 
@@ -53,6 +55,8 @@ class BadGuy(object):
 class GoodGuy(object):
 
     next_level_on_capture = False
+
+    score = -10
 
     def get_next_phrase(self, voice):
         return random.choice(voice.benign_phrases)
@@ -94,6 +98,7 @@ class Game(object):
                 if c.swat_pending <= 0:
                     c.swat_pending = False
                     # kill dood
+                    self.kill_guy(c)
 
     def get_empty_consoles(self):
         return [c for c in self.consoles if not c.active]
@@ -121,7 +126,7 @@ class Game(object):
 
     def kill_guy(self, console):
         console.active = False
-        score += console.get_score()
+        self.score += console.personality.score
         if console.personality.next_level_on_capture:
             self.next_level()
 
