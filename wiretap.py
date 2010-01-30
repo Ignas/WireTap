@@ -6,6 +6,9 @@ import glob
 import pygame
 from pygame.locals import *
 
+import pygame.mixer
+import pygame.font
+
 
 class Voice(object):
 
@@ -237,8 +240,7 @@ def prototype5():
 
     effects = []
 
-    font = pygame.font.Font(None, 24)
-
+    font = pygame.font.Font('freesansbold.ttf', 24)
     delta_t = 0.1
     while True:
         # interact
