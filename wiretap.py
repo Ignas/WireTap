@@ -303,6 +303,10 @@ class Layout(object):
     bye_color = (254, 232, 123)
     bye_text = 'Bye!'
 
+    paused_pos = 512, 340
+    paused_color = (254, 232, 123)
+    paused_text = 'Enjoy your coffee!'
+
     game_over_pos = 512, 310
     game_over_color = (254, 232, 123)
     game_over_text = 'Game Over'
@@ -391,6 +395,9 @@ class Layout(object):
         if game.time_limit <= 0:
             t = self.font.render(self.game_over_text, True, self.game_over_color)
             self.center_img(t, self.pos, self.game_over_pos)
+        elif game.paused:
+            t = self.font.render(self.paused_text, True, self.paused_color)
+            self.center_img(t, (self.x, self.y), self.paused_pos)
 
     def action(self, game, (x, y)):
         if self.in_button(x, y, self.quit_pos, self.quit_size, self.pos, self.quit_off):
@@ -510,6 +517,9 @@ def prototype5():
                 layout.bye()
                 pygame.display.update()
                 return
+            if event.type == KEYDOWN and (event.unicode in ('p', 'P') or
+                event.key == K_PAUSE):
+                game.toggle_paused()
             if event.type == KEYDOWN and (event.unicode in ('f', 'F') or
                 event.key in (K_RETURN, K_KP_ENTER) and event.mod & KMOD_ALT):
                 fullscreen = not fullscreen
