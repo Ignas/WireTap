@@ -6,8 +6,14 @@ import glob
 import pygame
 from pygame.locals import *
 
+# tell py2exe what we use
 import pygame.mixer
 import pygame.font
+import pygame.image
+import pygame.mouse
+import pygame.sound
+import pygame.event
+import pygame.display
 
 
 DEV_MODE = True
@@ -538,7 +544,10 @@ def main():
 
     effects = []
 
-    delta_t = 1.0 / 60 # fps; aim high!
+    if layout.use_custom_cursor:
+        delta_t = 1.0 / 60 # fps; aim high!
+    else:
+        delta_t = 1.0 / 10 # fps; we don't need much
     last_t = time.time()
     while True:
         # interact
