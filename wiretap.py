@@ -241,6 +241,7 @@ class Layout(object):
     speaking_pos = 195, 50
     speaking_inactive_src = "graphics/Lamp_inactive.png"
     speaking_active_src = "graphics/Lamp_active.png"
+    speaking_red_src = "graphics/Lamp_done.png"
 
     listening_pos = 80, 40
     listening_size = 128, 64
@@ -282,6 +283,7 @@ class Layout(object):
         self.background = pygame.image.load(self.background_src)
         self.speaking_inactive = pygame.image.load(self.speaking_inactive_src)
         self.speaking_active = pygame.image.load(self.speaking_active_src)
+        self.speaking_red = pygame.image.load(self.speaking_red_src)
         self.listening_on = pygame.image.load(self.listening_on_src)
         self.listening_off = pygame.image.load(self.listening_off_src)
         self.swat_on = pygame.image.load(self.swat_on_src)
@@ -311,7 +313,9 @@ class Layout(object):
         for n, c in enumerate(game.consoles):
             pos = self.console_pos(n)
 
-            if c.speaking:
+            if c.swat_engaged:
+                img = self.speaking_red
+            elif c.speaking:
                 img = self.speaking_active
             else:
                 img = self.speaking_inactive
