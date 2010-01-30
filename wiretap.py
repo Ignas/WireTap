@@ -7,7 +7,7 @@ import pygame
 from pygame.locals import *
 
 
-INTEGRATED_DEBUGGER = True
+DEV_MODE = True
 
 
 class Voice(object):
@@ -487,13 +487,18 @@ def prototype5():
                     layout.screen = pygame.display.set_mode(MODE, FULLSCREEN)
                 else:
                     layout.screen = pygame.display.set_mode(MODE, 0)
-            if event.type == KEYDOWN and event.unicode in ('d', 'D') and INTEGRATED_DEBUGGER:
-                if fullscreen:
-                    fullscreen = False
-                    layout.screen = pygame.display.set_mode(MODE, 0)
-                import pdb; pdb.set_trace()
             if event.type == MOUSEBUTTONUP:
                 layout.click(game, event.pos)
+            if DEV_MODE:
+                if event.type == KEYDOWN and event.unicode in ('d', 'D'):
+                    if fullscreen:
+                        fullscreen = False
+                        layout.screen = pygame.display.set_mode(MODE, 0)
+                    import pdb; pdb.set_trace()
+                if event.type == KEYDOWN and event.unicode in ('g', 'G'):
+                    game.add_good_guy()
+                if event.type == KEYDOWN and event.unicode in ('b', 'B'):
+                    game.add_bad_guy()
 
         # render audio
         active_channels = sum(c.listening and c.speaking for c in game.consoles) or 1
@@ -542,8 +547,8 @@ def prototype5():
 
 if __name__ == '__main__':
     prototype5()
-    print "Quitting!"
     t0 = time.time()
     pygame.quit()
-    print "WTF did pygame.quit() do during the last %.1f seconds?" % (time.time() - t0)
+    if DEV_MODE:
+        print "WTF did pygame.quit() do during the last %.1f seconds?" % (time.time() - t0)
 
