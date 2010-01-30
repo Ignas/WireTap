@@ -105,6 +105,7 @@ class Game(object):
                     c.kill()
             if c.swat_done:
                 c.swat_done = False
+                c.listening = False
                 self.kill_guy(c)
 
     def get_empty_consoles(self):
@@ -129,6 +130,7 @@ class Game(object):
     def move_good_guy(self):
         console = self.good_guys.pop(0)
         console.active = False
+        console.listening = False
         self.add_good_guy()
 
     def kill_guy(self, console):
