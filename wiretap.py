@@ -393,9 +393,9 @@ class Layout(object):
             self.center_img(t, self.pos, self.game_over_pos)
 
     def action(self, game, (x, y)):
-        if self.in_button(x, y, self.quit_pos, self.quit_size, self.pos):
+        if self.in_button(x, y, self.quit_pos, self.quit_size, self.pos, self.quit_off):
             return lambda: pygame.event.post(pygame.event.Event(QUIT))
-        if self.in_button(x, y, self.coffee_break_pos, self.coffee_break_size, self.pos):
+        if self.in_button(x, y, self.coffee_break_pos, self.coffee_break_size, self.pos, self.coffee_break_off):
             return game.toggle_paused
         n = self.console_idx(x, y)
         if n is None or not game.running:
@@ -404,9 +404,9 @@ class Layout(object):
         if c.disabled:
             return
         pos = self.console_pos(n)
-        if self.in_button(x, y, self.listening_pos, self.listening_size, pos):
+        if self.in_button(x, y, self.listening_pos, self.listening_size, pos, self.listening_off):
             return lambda: c.toggle_listening()
-        if self.in_button(x, y, self.swat_pos, self.swat_size, pos):
+        if self.in_button(x, y, self.swat_pos, self.swat_size, pos, self.swat_off):
             return lambda: c.send_swat()
 
     def click(self, game, (x, y)):
@@ -428,9 +428,18 @@ class Layout(object):
         img = self.quit_on
         self.center_img(img, self.pos, self.quit_pos)
 
-    def in_button(self, x, y, pos, size, delta=(0, 0)):
-        return (abs(x - pos[0] - delta[0]) <= size[0] and
-                abs(y - pos[1] - delta[1]) <= size[1])
+    def in_button(self, x, y, pos, size, delta=(0, 0), button=None):
+        if (abs(x - pos[0] - delta[0]) < size[0] / 2 and
+            abs(y - pos[1] - delta[1]) < size[1] / 2):
+            dx = x - pos[0] - delta[0] + size[0] / 2
+            dy = y - pos[1] - delta[1] + size[1] / 2
+            if button:
+                color = button.get_at((dx, dy))
+                if len(color) > 3 and color[3] < 128:
+                    return False # alpha-transparent
+            return True
+        else:
+            return False
 
     def center_img(self, img, pos, delta=(0, 0)):
         self.screen.blit(img, (pos[0] + delta[0] - img.get_width() / 2,
