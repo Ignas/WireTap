@@ -11,7 +11,6 @@ import pygame.mixer
 import pygame.font
 import pygame.image
 import pygame.mouse
-import pygame.sound
 import pygame.event
 import pygame.display
 
