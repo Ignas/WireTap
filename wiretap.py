@@ -17,170 +17,119 @@ class Voice(object):
         return self.benign_phrases + self.suspicious_phrases
 
 
-class Person(object):
+class Console(object): # aka listening station
 
-    score = None
-
-    def __init__(self, voice):
-        self.voice = voice
-
-    def get_phrase(self):
-        pass
-
-
-class Citizen(Person): # aka obedient citizen
-
-    score = -10
-
-    def get_phrase(self):
-        return random.choice(self.voice.benign_phrases)
-
-
-class Terrorist(Person):
-
-    score = 10
-
-    def get_phrase(self):
-        return random.choice(self.voice.all_phrases)
-
-
-class Household(object):
-
-    def __init__(self, tenants=()):
-        self.tenants = list(tenants)
+    def __init__(self):
+        self.listening = False
+        self.active = False
+        self.swat_pending = 0
         self.pending_conversation = []
-        self.current_phrase = None
+        self.personality = None
 
-    def get_conversation(self, length):
-        if self.tenants:
-            return [random.choice(self.tenants).get_phrase()
-                    for n in range(length)]
-        else:
-            return []
+    @property
+    def speaking(self):
+        return self.active
 
-    def initiate_conversation(self, length):
-        self.pending_conversation = self.get_conversation(length)
+
+    def get_next_phrase(self):
+        if self.personality == GOOD_GUY:
+            return random.choice(self.voice.benign_phrases)
+        elif self.personality == BAD_GUY:
+            return random.choice(self.voice.all_phrases)
+
+    def send_swat(self, delay=5):
+        self.swat_pending = delay
 
     def stop_conversation(self):
         self.pending_conversation = []
         self.current_phrase = None
 
-
-class Console(object): # aka listening station
-
-    def __init__(self, household):
-        self.household = household
-        self.listening = False
-        self.swat_pending = 0
-
-    @property
-    def speaking(self):
-        return self.household.current_phrase is not None
-
-    def send_swat(self, delay=5):
-        self.swat_pending = delay
-
-
-class Level(object):
-
-    n_consoles = 16
-    range_n_persons_per_household = 2, 3
-    range_conversation_length = 3, 7
-    time_limit = 300 # seconds
-    expected_pause_length = 5
-    chance_of_terrorism = 0.1
-
-    def __init__(self, n_terrorists, max_simultaneous_conversations=8):
-        self.n_terrorists = n_terrorists
-        self.max_simultaneous_conversations = max_simultaneous_conversations
-        self.passing_score = Terrorist.score * n_terrorists / 2
-
-    def pick_n_persons_per_household(self):
-        return random.randint(*self.range_n_persons_per_household)
-
-    def pick_conversation_length(self):
-        return random.randint(*self.range_conversation_length)
-
+BAD_GUY = object()
+GOOD_GUY = object()
 
 class Game(object):
 
-    def __init__(self, voices, level=None):
+    def __init__(self, voices):
         self.voices = voices
         self.consoles = []
         self.score = 0
-        self.time_limit = 0
-        self.level = None
-        if level:
-            self.reset(level)
+        self.time_limit = 300
+        self.level = 0
+        self.n_consoles = 16
+        self.good_guys = []
 
-    def reset(self, level):
-        self.consoles = []
-        self.score = 0
-        self.level = level
-        self.time_limit = level.time_limit
-        n_terrorists = level.n_terrorists
-        for n in range(level.n_consoles):
-            if n_terrorists > 0:
-                person_maker = Terrorist
-                n_terrorists -= 1
-            else:
-                person_maker = Citizen
-            household = self.make_new_household(person_maker)
-            self.consoles.append(Console(household))
-        random.shuffle(self.consoles)
-        self.start_new_conversation()
+        for n in range(self.n_consoles):
+            self.consoles.append(Console())
 
-    def pick_replacement_person(self):
-        if random.random() < self.level.chance_of_terrorism:
-            return Terrorist
-        else:
-            return Citizen
+        self.start()
 
-    def make_new_household(self, person_maker):
-        n_persons = self.level.pick_n_persons_per_household()
-        household = Household([person_maker(random.choice(self.voices))
-                               for m in range(n_persons)])
-        return household
-
-    def count_active_conversations(self):
-        return sum(c.speaking for c in self.consoles)
-
-    def should_start_new_conversation(self, delta_t):
-        n = self.count_active_conversations()
-        m = self.level.max_simultaneous_conversations
-        available_slots = m - n
-        chance = float(delta_t) / self.level.expected_pause_length
-        chance = chance * available_slots / m
-        return random.random() <= chance
-
-    def get_silent_households(self):
-        return [c.household for c in self.consoles if not c.speaking]
+    def start(self):
+        self.level = 1
+        self.add_bad_guy()
 
     def tick(self, delta_t):
         self.time_limit -= delta_t
         if self.time_limit < 0:
             self.time_limit = 0
             return # end of level
-        if self.should_start_new_conversation(delta_t):
-            self.start_new_conversation()
+
         for c in self.consoles:
             if c.swat_pending:
                 c.swat_pending -= delta_t
                 if c.swat_pending <= 0:
                     c.swat_pending = False
-                    c.household.stop_conversation()
-                    for p in c.household.tenants:
-                        self.score += p.score
-                    c.household = self.make_new_household(self.pick_replacement_person())
+                    # kill dood
 
-    def start_new_conversation(self):
-        silent_households = self.get_silent_households()
-        if not silent_households:
+    def get_empty_consoles(self):
+        return [c for c in self.consoles if not c.active]
+
+    def add_guy(self, personality):
+        empty_consoles = self.get_empty_consoles()
+        if not empty_consoles:
             return
-        household = random.choice(silent_households)
-        length = self.level.pick_conversation_length()
-        household.initiate_conversation(length)
+        console = random.choice(empty_consoles)
+        console.personality = personality
+        console.active = True
+        console.voice = random.choice(self.voices)
+        return console
 
+    def add_bad_guy(self):
+        return self.add_guy(BAD_GUY)
+
+    def add_good_guy(self):
+        return self.good_guys.append(self.add_guy(GOOD_GUY))
+
+    def move_good_guy(self):
+        console = self.good_guys.pop(0)
+        console.active = False
+        self.add_good_guy()
+
+    def kill_guy(self, console):
+        console.active = False
+        score += console.get_score()
+        if console.personality is BAD_GUY:
+            self.next_level()
+
+    def next_level(self):
+        db = self.level in (4, 7, 12) and 2 or 1
+
+        mg = 0
+        if self.level >= 3:
+            mg = 1
+        elif self.level >= 8:
+            mg = 2
+
+        dg = 2 - db
+        self.level += 1
+
+        for n in range(dg):
+            self.add_good_guy()
+
+        for n in range(db):
+            self.add_bad_guy()
+
+        for n in range(mg):
+            self.move_good_guy()
 
 
 def prototype5():
@@ -198,8 +147,7 @@ def prototype5():
                                 ['1_deception.wav', '1_fire.wav',
                                  '1_wire.wav', '1_wire.wav'])
     voices = [v1]
-    level1 = Level(3)
-    game = Game(voices, level1)
+    game = Game(voices)
 
     font = pygame.font.Font(None, 24)
 
@@ -238,14 +186,12 @@ def prototype5():
                 channel.set_volume(1.0)
             else:
                 channel.set_volume(0.0)
-            h = c.household
-            if h.pending_conversation and channel.get_queue() is None:
-                h.current_phrase = h.pending_conversation.pop(0)
-                channel.queue(h.current_phrase)
-            elif h.current_phrase is not None and not channel.get_busy():
-                h.current_phrase = None
-            elif h.current_phrase is None and channel.get_busy():
+
+            if c.active and channel.get_queue() is None:
+                channel.queue(c.get_next_phrase())
+            elif c.get_next_phrase() is None and channel.get_busy():
                 channel.stop()
+
         # draw
         screen.fill((0, 0, 0))
         for n, c in enumerate(game.consoles):
