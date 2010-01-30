@@ -184,6 +184,8 @@ class Game(object):
 
 
 def prototype5():
+    # XXX attempting to use 44100 Hz causes weeeird problems and 100% CPU
+    pygame.mixer.pre_init(22050, -16, 2, 2048)
     pygame.init()
     pygame.display.set_caption('Wiretap')
     pygame.mixer.set_num_channels(32)
