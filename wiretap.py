@@ -526,8 +526,6 @@ def main():
 
     effects = []
 
-    font = pygame.font.Font(None, 24)
-
     delta_t = 1.0 / 60 # fps
     last_t = time.time()
     while True:
