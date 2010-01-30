@@ -462,7 +462,8 @@ def prototype5():
                 layout.bye()
                 pygame.display.update()
                 return
-            if event.type == KEYDOWN and event.unicode in ('f', 'F'):
+            if event.type == KEYDOWN and (event.unicode in ('f', 'F') or
+                event.key in (K_RETURN, K_KP_ENTER) and event.mod & KMOD_ALT):
                 fullscreen = not fullscreen
                 if fullscreen:
                     layout.screen = pygame.display.set_mode(MODE, FULLSCREEN)
