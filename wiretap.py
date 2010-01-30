@@ -9,6 +9,8 @@ from pygame.locals import *
 
 class Voice(object):
 
+    male = True
+
     def __init__(self):
         self.benign_phrases = []
         self.suspicious_phrases = []
@@ -174,6 +176,7 @@ def prototype5():
                                    glob.glob('sounds/p%d_bad*.wav' % n))
         if not v.benign_phrases or not v.suspicious_phrases:
             break
+        v.male = bool(glob.glob('sounds/p%d_*_m.wav'))
         n += 1
         voices.append(v)
     game = Game(voices)
