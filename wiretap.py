@@ -1,12 +1,15 @@
 #!/usr/bin/python
 import random
 import time
+import glob
 
 import pygame
 from pygame.locals import *
 
 
 class Voice(object):
+
+    male = True
 
     def __init__(self):
         self.benign_phrases = []
@@ -23,29 +26,69 @@ class Console(object): # aka listening station
         self.listening = False
         self.active = False
         self.swat_pending = 0
-        self.pending_conversation = []
-        self.personality = None
+        self.swat_arrived = False
+        self.swat_active = False
+        self.swat_done = False
+        self.personality = NOBODY
 
     @property
     def speaking(self):
-        return self.active
-
+        return self.active or self.swat_active
 
     def get_next_phrase(self):
-        if self.personality == GOOD_GUY:
-            return random.choice(self.voice.benign_phrases)
-        elif self.personality == BAD_GUY:
-            return random.choice(self.voice.all_phrases)
+        if self.personality:
+            return self.personality.get_next_phrase(self.voice)
 
-    def send_swat(self, delay=5):
+    def send_swat(self, delay=3):
         self.swat_pending = delay
+        self.listening = True
 
-    def stop_conversation(self):
-        self.pending_conversation = []
-        self.current_phrase = None
+    def kill(self):
+        self.active = False
+        self.swat_arrived = True
 
-BAD_GUY = object()
-GOOD_GUY = object()
+
+class BadGuy(object):
+
+    next_level_on_capture = True
+
+    score = 10
+
+    def get_next_phrase(self, voice):
+        return random.choice(voice.all_phrases)
+
+
+class GoodGuy(object):
+
+    next_level_on_capture = False
+
+    score = -10
+
+    def get_next_phrase(self, voice):
+        return random.choice(voice.benign_phrases)
+
+
+class Nobody(object):
+
+    next_level_on_capture = False
+
+    score = -5
+
+    def get_next_phrase(self, voice):
+        return None
+
+
+NOBODY = Nobody()
+BAD_GUY = BadGuy()
+GOOD_GUY = GoodGuy()
+
+
+class ScoreEffect(object):
+
+    def __init__(self, console, score):
+        self.console = console
+        self.score = score
+
 
 class Game(object):
 
@@ -57,6 +100,7 @@ class Game(object):
         self.level = 0
         self.n_consoles = 16
         self.good_guys = []
+        self.effects = []
 
         for n in range(self.n_consoles):
             self.consoles.append(Console())
@@ -76,9 +120,13 @@ class Game(object):
         for c in self.consoles:
             if c.swat_pending:
                 c.swat_pending -= delta_t
-                if c.swat_pending <= 0:
+                if c.swat_pending < 1:
                     c.swat_pending = False
-                    # kill dood
+                    c.kill()
+            if c.swat_done:
+                c.swat_done = False
+                c.listening = False
+                self.kill_guy(c)
 
     def get_empty_consoles(self):
         return [c for c in self.consoles if not c.active]
@@ -102,12 +150,13 @@ class Game(object):
     def move_good_guy(self):
         console = self.good_guys.pop(0)
         console.active = False
+        console.listening = False
         self.add_good_guy()
 
     def kill_guy(self, console):
-        console.active = False
-        score += console.get_score()
-        if console.personality is BAD_GUY:
+        self.effects.append(ScoreEffect(console, console.personality.score))
+        self.score += console.personality.score
+        if console.personality.next_level_on_capture:
             self.next_level()
 
     def next_level(self):
@@ -132,25 +181,65 @@ class Game(object):
             self.move_good_guy()
 
 
+class ScoreBubble(object):
+
+    def __init__(self, x, y, text, color, font, time=3, dx=0, dy=-10):
+        self.x = x
+        self.y = y
+        self.dx = dx
+        self.dy = dy
+        self.text = text
+        self.color = color
+        self.font = font
+        self.surface = font.render(text, True, color)
+        self.x -= self.surface.get_width() / 2
+        self.y -= self.surface.get_height() / 2
+        self.time_left = time
+
+    def tick(self, delta_t):
+        self.time_left -= delta_t
+        if self.time_left < 0:
+            self.time_left = 0
+            return False
+        self.x += self.dx * delta_t
+        self.y += self.dy * delta_t
+        return True
+
+    def draw(self, screen):
+        if self.time_left > 0:
+            screen.blit(self.surface, (int(self.x), int(self.y)))
+
+
 def prototype5():
-    # XXX attempting to use 44100 Hz causes weeeird problems and 100% CPU
-    pygame.mixer.pre_init(44100, -16, 2, 2048)
+    # XXX attempting to use 44100 Hz causes 100% CPU
+    pygame.mixer.pre_init(22050, -16, 2, 2048)
     pygame.init()
     pygame.display.set_caption('Wiretap')
     pygame.mixer.set_num_channels(32)
     screen = pygame.display.set_mode((1024, 700), 0)
 
-    v1 = Voice()
-    v1.benign_phrases = map(pygame.mixer.Sound,
-                            ['1_1.wav', '1_2.wav', '1_3.wav'])
-    v1.suspicious_phrases = map(pygame.mixer.Sound,
-                                ['1_deception.wav', '1_fire.wav',
-                                 '1_wire.wav', '1_wire.wav'])
-    voices = [v1]
+    voices = []
+    n = 1
+    while True:
+        v = Voice()
+        v.benign_phrases = map(pygame.mixer.Sound,
+                               glob.glob('sounds/p%d_good*.wav' % n))
+        v.suspicious_phrases = map(pygame.mixer.Sound,
+                                   glob.glob('sounds/p%d_bad*.wav' % n))
+        if not v.benign_phrases or not v.suspicious_phrases:
+            break
+        v.male = bool(glob.glob('sounds/p%d_*_m.wav'))
+        n += 1
+        voices.append(v)
     game = Game(voices)
+
+    swat_sound = pygame.mixer.Sound('swat.wav')
+
+    effects = []
 
     font = pygame.font.Font(None, 24)
 
+    delta_t = 0.1
     while True:
         # interact
         for event in pygame.event.get():
@@ -171,7 +260,8 @@ def prototype5():
                         c = game.consoles[n]
                         c.listening = not c.listening
                 if (abs(event.pos[0] % (1024/4) - 100) <= 70
-                    and abs(event.pos[1] % (700/4) - 70) <= 15):
+                    and abs(event.pos[1] % (700/4) - 70) <= 15
+                    and game.time_limit > 0):
                     row = event.pos[1] / (700/4)
                     col = event.pos[0] / (1024/4)
                     if 0 <= row < 4 and 0 <= col < 4:
@@ -179,8 +269,9 @@ def prototype5():
                         c = game.consoles[n]
                         c.send_swat()
 
-        # audio
+        # render audio
         active_channels = sum(c.listening and c.speaking for c in game.consoles) or 1
+        active_channels = (active_channels + 1.0) / 2 # slower attenuation
         for n, c in enumerate(game.consoles):
             channel = pygame.mixer.Channel(n)
             if c.listening:
@@ -190,8 +281,13 @@ def prototype5():
 
             if c.active and channel.get_queue() is None:
                 channel.queue(c.get_next_phrase())
-            elif c.get_next_phrase() is None and channel.get_busy():
-                channel.stop()
+            elif c.swat_arrived:
+                c.swat_arrived = False
+                c.swat_active = True
+                channel.play(swat_sound)
+            elif c.swat_active and not channel.get_busy():
+                c.swat_active = False
+                c.swat_done = True
 
         # draw
         screen.fill((0, 0, 0))
@@ -213,12 +309,19 @@ def prototype5():
             if c.swat_pending:
                 color = (255, 23, 34)
                 s = 'SEND SWAT: %d' % c.swat_pending
+            elif c.swat_active:
+                color = (255, 23, 34)
+                s = 'SEND SWAT: !'
             else:
                 color = (175, 23, 34)
                 s = 'SEND SWAT'
             t = font.render(s, True, color)
             screen.blit(t, (x + 100 - t.get_width() / 2, y + 70))
+        for e in effects:
+            e.draw(screen)
 
+        t = font.render('Level: %d' % game.level, True, (255, 255, 255))
+        screen.blit(t, (10, 620))
         t = font.render('Score: %d' % game.score, True, (255, 255, 255))
         screen.blit(t, (10, 650))
         t = font.render('Time left: %d:%02d' % divmod(game.time_limit, 60), True, (255, 255, 255))
@@ -231,8 +334,20 @@ def prototype5():
 
         pygame.display.flip()
         # wait
-        time.sleep(0.1)
-        game.tick(0.1)
+        time.sleep(delta_t)
+        game.tick(delta_t)
+        effects = [e for e in effects if e.tick(delta_t)]
+        while game.effects:
+            ef = game.effects.pop()
+            if isinstance(ef, ScoreEffect):
+                if ef.score > 0:
+                   color = (20, 200, 20)
+                else:
+                   color = (200, 20, 20)
+                n = game.consoles.index(ef.console)
+                row, col = divmod(n, 4)
+                x, y = col * 1024/4, row * 700/4
+                effects.append(ScoreBubble(x + 100, y + 40, '%+d' % ef.score, color, font))
 
 
 if __name__ == '__main__':
