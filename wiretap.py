@@ -25,6 +25,8 @@ class Voice(object):
 
 class Console(object): # aka listening station
 
+    disabled = False
+
     def __init__(self):
         self.listening = False
         self.active = False
@@ -38,13 +40,18 @@ class Console(object): # aka listening station
     def speaking(self):
         return self.active or self.swat_active
 
+    @property
+    def swat_engaged(self):
+        return self.swat_pending or self.swat_active or self.swat_arrived or self.swat_done
+
     def get_next_phrase(self):
         if self.personality:
             return self.personality.get_next_phrase(self.voice)
 
     def send_swat(self, delay=3):
-        self.swat_pending = delay
         self.listening = True
+        if not self.swat_engaged:
+            self.swat_pending = delay
 
     def kill(self):
         self.active = False
@@ -104,15 +111,22 @@ class Game(object):
         self.n_consoles = 16
         self.good_guys = []
         self.effects = []
+        self.paused = False
 
         for n in range(self.n_consoles):
             self.consoles.append(Console())
+        self.consoles[11].disabled = True
+        self.consoles[13].disabled = True
 
         self.start()
 
     def start(self):
         self.level = 1
         self.add_bad_guy()
+
+    @property
+    def running(self):
+        return not self.paused and self.time_limit >= 0
 
     def tick(self, delta_t):
         self.time_limit -= delta_t
@@ -132,7 +146,7 @@ class Game(object):
                 self.kill_guy(c)
 
     def get_empty_consoles(self):
-        return [c for c in self.consoles if not c.active]
+        return [c for c in self.consoles if not c.active and not c.disabled]
 
     def add_guy(self, personality):
         empty_consoles = self.get_empty_consoles()
@@ -186,7 +200,7 @@ class Game(object):
 
 class ScoreBubble(object):
 
-    def __init__(self, x, y, text, color, font, time=3, dx=0, dy=-10):
+    def __init__(self, x, y, text, color, font, time=3, dx=0, dy=-10, shadow=None):
         self.x = x
         self.y = y
         self.dx = dx
@@ -195,6 +209,11 @@ class ScoreBubble(object):
         self.color = color
         self.font = font
         self.surface = font.render(text, True, color)
+        self.shadow = shadow
+        if shadow:
+            self.shadow_surface = font.render(text, True, shadow)
+        else:
+            self.shadow_surface = None
         self.x -= self.surface.get_width() / 2
         self.y -= self.surface.get_height() / 2
         self.time_left = time
@@ -208,9 +227,206 @@ class ScoreBubble(object):
         self.y += self.dy * delta_t
         return True
 
+    def set_alpha(self, alpha):
+        r, g, b = self.color
+        r, g, b = r * alpha, g * alpha, b * alpha
+        self.surface = self.font.render(self.text, True, (r, g, b))
+
+        if self.shadow:
+            r, g, b = self.shadow
+            r, g, b = r * alpha, g * alpha, b * alpha
+            self.shadow_surface = self.font.render(self.text, True, (r, g, b))
+
     def draw(self, screen):
         if self.time_left > 0:
+            if self.time_left < 1:
+                self.set_alpha(self.time_left)
+            if self.shadow_surface:
+                screen.blit(self.shadow_surface, (int(self.x) + 1, int(self.y) + 1))
             screen.blit(self.surface, (int(self.x), int(self.y)))
+
+
+class Layout(object):
+
+    size = (1024, 768)
+
+    background_src = "graphics/Background.png"
+
+    grid_pos = (20, 20)
+    grid_rows = 4
+    grid_cols = 4
+    grid_cell_size = (251, 145)
+
+    speaking_pos = 195, 50
+    speaking_inactive_src = "graphics/Lamp_inactive.png"
+    speaking_active_src = "graphics/Lamp_active.png"
+    speaking_red_src = "graphics/Lamp_done.png"
+
+    listening_pos = 80, 40
+    listening_size = 128, 64
+    listening_off_src = "graphics/Off.png"
+    listening_on_src = "graphics/On.png"
+
+    swat_pos = 80, 100
+    swat_size = 128, 64
+    swat_off_src = "graphics/Send_swat.png"
+    swat_on_src = "graphics/Send_swat_pressed.png"
+
+    score_pos = 155, 90
+    score_positive_color = (20, 200, 20)
+    score_positive_shadow = (0, 20, 0)
+    score_negative_color = (200, 20, 20)
+    score_negative_shadow = (20, 0, 0)
+
+    coffee_break_pos = 132, 651
+    coffee_break_size = 128, 64
+    coffee_break_off_src = "graphics/Break.png"
+    coffee_break_on_src = "graphics/Break_pressed.png"
+
+    quit_pos = 888, 651
+    quit_size = 128, 64
+    quit_off_src = "graphics/Quit.png"
+    quit_on_src = "graphics/Quit_pressed.png"
+
+    bye_pos = 512, 340
+    bye_color = (254, 232, 123)
+    bye_text = 'Bye!'
+
+    game_over_pos = 512, 310
+    game_over_color = (254, 232, 123)
+    game_over_text = 'Game Over'
+
+    def __init__(self, screen):
+        self.screen = screen
+        self.x = (screen.get_width() - self.size[0]) / 2
+        self.y = (screen.get_height() - self.size[1]) / 2
+        self.pos = (self.x, self.y)
+        self.background = pygame.image.load(self.background_src)
+        self.speaking_inactive = pygame.image.load(self.speaking_inactive_src)
+        self.speaking_active = pygame.image.load(self.speaking_active_src)
+        self.speaking_red = pygame.image.load(self.speaking_red_src)
+        self.listening_on = pygame.image.load(self.listening_on_src)
+        self.listening_off = pygame.image.load(self.listening_off_src)
+        self.swat_on = pygame.image.load(self.swat_on_src)
+        self.swat_off = pygame.image.load(self.swat_off_src)
+        self.coffee_break_on = pygame.image.load(self.coffee_break_on_src)
+        self.coffee_break_off = pygame.image.load(self.coffee_break_off_src)
+        self.quit_on = pygame.image.load(self.quit_on_src)
+        self.quit_off = pygame.image.load(self.quit_off_src)
+        self.font = pygame.font.Font(None, 24)
+
+    def console_pos(self, n):
+        row, col = divmod(n, self.grid_cols)
+        x = self.grid_pos[0] + col * self.grid_cell_size[0]
+        y = self.grid_pos[1] + row * self.grid_cell_size[1]
+        return (self.x + x, self.y + y)
+
+    def console_idx(self, x, y):
+        col = (x - self.x - self.grid_pos[0]) // self.grid_cell_size[0]
+        row = (y - self.y - self.grid_pos[1]) // self.grid_cell_size[1]
+        if 0 <= row < self.grid_rows and 0 <= col < self.grid_cols:
+            return row * self.grid_cols + col
+
+    def draw(self, game):
+        screen = self.screen
+        # XXX maybe fill areas outside background, if any
+        screen.blit(self.background, (self.x, self.y))
+        for n, c in enumerate(game.consoles):
+            if c.disabled:
+                continue
+
+            pos = self.console_pos(n)
+
+            if c.swat_engaged:
+                img = self.speaking_red
+            elif c.speaking:
+                img = self.speaking_active
+            else:
+                img = self.speaking_inactive
+            self.center_img(img, pos, self.speaking_pos)
+
+            if c.listening:
+                img = self.listening_on
+            else:
+                img = self.listening_off
+            self.center_img(img, pos, self.listening_pos)
+
+            if c.swat_engaged:
+                img = self.swat_on
+            else:
+                img = self.swat_off
+            self.center_img(img, pos, self.swat_pos)
+
+        if game.paused:
+            img = self.coffee_break_on
+        else:
+            img = self.coffee_break_off
+        self.center_img(img, self.pos, self.coffee_break_pos)
+
+        img = self.quit_off
+        self.center_img(img, self.pos, self.quit_pos)
+
+        font = self.font
+        t = font.render('Level: %d' % game.level, True, (255, 255, 255))
+        self.center_img(t, (self.x + 512, self.y + 620))
+        t = font.render('Score: %d' % game.score, True, (255, 255, 255))
+        self.center_img(t, (self.x + 512, self.y + 650))
+        t = font.render('Time left: %d:%02d' % divmod(game.time_limit, 60), True, (255, 255, 255))
+        self.center_img(t, (self.x + 512, self.y + 680))
+
+        if game.time_limit <= 0:
+            t = self.font.render(self.game_over_text, True, self.game_over_color)
+            self.center_img(t, self.pos, self.game_over_pos)
+
+    def click(self, game, (x, y)):
+        if self.in_button(x, y, self.quit_pos, self.quit_size, self.pos):
+            pygame.event.post(pygame.event.Event(QUIT))
+        if self.in_button(x, y, self.coffee_break_pos, self.coffee_break_size, self.pos):
+            game.paused = not game.paused
+        n = self.console_idx(x, y)
+        if n is None or not game.running:
+            return
+        c = game.consoles[n]
+        if c.disabled:
+            return
+        pos = self.console_pos(n)
+        if self.in_button(x, y, self.listening_pos, self.listening_size, pos):
+            c.listening = not c.listening
+        if self.in_button(x, y, self.swat_pos, self.swat_size, pos):
+            c.send_swat()
+
+    def bye(self):
+        t = self.font.render(self.bye_text, True, self.bye_color)
+        self.center_img(t, (self.x, self.y), self.bye_pos)
+        img = self.quit_on
+        self.center_img(img, self.pos, self.quit_pos)
+
+    def in_button(self, x, y, pos, size, delta=(0, 0)):
+        return (abs(x - pos[0] - delta[0]) <= size[0] and
+                abs(y - pos[1] - delta[1]) <= size[1])
+
+    def center_img(self, img, pos, delta=(0, 0)):
+        self.screen.blit(img, (pos[0] + delta[0] - img.get_width() / 2,
+                               pos[1] + delta[1] - img.get_height() / 2))
+
+    def effect(self, game, ef):
+        effect = getattr(self, 'effect_' + ef.__class__.__name__, None)
+        if effect is not None:
+            return effect(game, ef)
+
+    def effect_ScoreEffect(self, game, ef):
+        if ef.score > 0:
+           color = self.score_positive_color
+           shadow = self.score_positive_shadow
+        else:
+           color = self.score_negative_color
+           shadow = self.score_negative_shadow
+        n = game.consoles.index(ef.console)
+        x, y = self.console_pos(n)
+        return ScoreBubble(self.x + x + self.score_pos[0],
+                           self.y + y + self.score_pos[1],
+                           '%+d' % ef.score, color, self.font,
+                           shadow=shadow)
 
 
 def prototype5():
@@ -219,7 +435,14 @@ def prototype5():
     pygame.init()
     pygame.display.set_caption('Wiretap')
     pygame.mixer.set_num_channels(32)
-    screen = pygame.display.set_mode((1024, 700), 0)
+
+    MODE = (1024, 768)
+    fullscreen = True
+    screen = pygame.display.set_mode((1024, 768), FULLSCREEN)
+    screen.fill((0, 0, 0))
+
+    layout = Layout(screen)
+    del screen
 
     voices = []
     n = 1
@@ -247,35 +470,29 @@ def prototype5():
         for event in pygame.event.get():
             if event.type == QUIT or event.type == KEYDOWN and (
                 event.key == K_ESCAPE or event.unicode in ('q', 'Q')):
-                t = font.render('Bye!', True, (254, 232, 123))
-                screen.blit(t, ((1024 - t.get_width()) / 2,
-                                (680 - t.get_height()) / 2))
+                layout.bye()
                 pygame.display.update()
                 return
+            if event.type == KEYDOWN and (event.unicode in ('f', 'F') or
+                event.key in (K_RETURN, K_KP_ENTER) and event.mod & KMOD_ALT):
+                fullscreen = not fullscreen
+                if fullscreen:
+                    layout.screen = pygame.display.set_mode(MODE, FULLSCREEN)
+                else:
+                    layout.screen = pygame.display.set_mode(MODE, 0)
             if event.type == MOUSEBUTTONUP:
-                if (abs(event.pos[0] % (1024/4) - 140) <= 11
-                    and abs(event.pos[1] % (700/4) - 40) <= 11):
-                    row = event.pos[1] / (700/4)
-                    col = event.pos[0] / (1024/4)
-                    if 0 <= row < 4 and 0 <= col < 4:
-                        n = row * 4 + col
-                        c = game.consoles[n]
-                        c.listening = not c.listening
-                if (abs(event.pos[0] % (1024/4) - 100) <= 70
-                    and abs(event.pos[1] % (700/4) - 70) <= 15
-                    and game.time_limit > 0):
-                    row = event.pos[1] / (700/4)
-                    col = event.pos[0] / (1024/4)
-                    if 0 <= row < 4 and 0 <= col < 4:
-                        n = row * 4 + col
-                        c = game.consoles[n]
-                        c.send_swat()
+                layout.click(game, event.pos)
 
         # render audio
         active_channels = sum(c.listening and c.speaking for c in game.consoles) or 1
         active_channels = (active_channels + 1.0) / 2 # slower attenuation
         for n, c in enumerate(game.consoles):
             channel = pygame.mixer.Channel(n)
+            if not game.running:
+                channel.pause()
+                continue
+            channel.unpause()
+
             if c.listening:
                 channel.set_volume(1.0 / active_channels)
             else:
@@ -292,64 +509,23 @@ def prototype5():
                 c.swat_done = True
 
         # draw
-        screen.fill((0, 0, 0))
-        for n, c in enumerate(game.consoles):
-            row, col = divmod(n, 4)
-            x, y = col * 1024/4, row * 700/4
-            if c.speaking:
-                color = (100, 200, 0)
-                r = 15
-            else:
-                color = (0, 100, 0)
-                r = 10
-            pygame.draw.circle(screen, color, (x + 40, y + 40), r)
-            if c.listening:
-                color = (200, 150, 10)
-            else:
-                color = (100, 50, 0)
-            pygame.draw.circle(screen, color, (x + 140, y + 40), 10)
-            if c.swat_pending:
-                color = (255, 23, 34)
-                s = 'SEND SWAT: %d' % c.swat_pending
-            elif c.swat_active:
-                color = (255, 23, 34)
-                s = 'SEND SWAT: !'
-            else:
-                color = (175, 23, 34)
-                s = 'SEND SWAT'
-            t = font.render(s, True, color)
-            screen.blit(t, (x + 100 - t.get_width() / 2, y + 70))
+        layout.draw(game)
         for e in effects:
-            e.draw(screen)
-
-        t = font.render('Level: %d' % game.level, True, (255, 255, 255))
-        screen.blit(t, (10, 620))
-        t = font.render('Score: %d' % game.score, True, (255, 255, 255))
-        screen.blit(t, (10, 650))
-        t = font.render('Time left: %d:%02d' % divmod(game.time_limit, 60), True, (255, 255, 255))
-        screen.blit(t, (10, 680))
-
-        if game.time_limit <= 0:
-            t = font.render('Game over', True, (254, 232, 123))
-            screen.blit(t, ((1024 - t.get_width()) / 2,
-                            (680 - t.get_height()) / 2 - 30))
-
+            e.draw(layout.screen)
         pygame.display.flip()
-        # wait
+
+        # wait for next frame
         time.sleep(delta_t)
+
+        # game logic
+        if game.paused:
+            continue
         game.tick(delta_t)
         effects = [e for e in effects if e.tick(delta_t)]
         while game.effects:
-            ef = game.effects.pop()
-            if isinstance(ef, ScoreEffect):
-                if ef.score > 0:
-                   color = (20, 200, 20)
-                else:
-                   color = (200, 20, 20)
-                n = game.consoles.index(ef.console)
-                row, col = divmod(n, 4)
-                x, y = col * 1024/4, row * 700/4
-                effects.append(ScoreBubble(x + 100, y + 40, '%+d' % ef.score, color, font))
+            effect = layout.effect(game, game.effects.pop())
+            if effect:
+                effects.append(effect)
 
 
 if __name__ == '__main__':
