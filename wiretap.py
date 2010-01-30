@@ -30,12 +30,9 @@ class Console(object): # aka listening station
     def speaking(self):
         return self.active
 
-
     def get_next_phrase(self):
-        if self.personality == GOOD_GUY:
-            return random.choice(self.voice.benign_phrases)
-        elif self.personality == BAD_GUY:
-            return random.choice(self.voice.all_phrases)
+        if self.personality:
+            return self.personality.get_next_phrase(self.voice)
 
     def send_swat(self, delay=5):
         self.swat_pending = delay
@@ -44,8 +41,26 @@ class Console(object): # aka listening station
         self.pending_conversation = []
         self.current_phrase = None
 
-BAD_GUY = object()
-GOOD_GUY = object()
+
+class BadGuy(object):
+
+    next_level_on_capture = True
+
+    def get_next_phrase(self, voice):
+        return random.choice(voice.all_phrases)
+
+
+class GoodGuy(object):
+
+    next_level_on_capture = False
+
+    def get_next_phrase(self, voice):
+        return random.choice(voice.benign_phrases)
+
+
+BAD_GUY = BadGuy()
+GOOD_GUY = GoodGuy()
+
 
 class Game(object):
 
@@ -107,7 +122,7 @@ class Game(object):
     def kill_guy(self, console):
         console.active = False
         score += console.get_score()
-        if console.personality is BAD_GUY:
+        if console.personality.next_level_on_capture:
             self.next_level()
 
     def next_level(self):
