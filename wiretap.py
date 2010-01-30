@@ -6,6 +6,9 @@ import glob
 import pygame
 from pygame.locals import *
 
+import pygame.mixer
+import pygame.font
+
 
 DEV_MODE = True
 SHOW_FPS = False
@@ -320,6 +323,9 @@ class Layout(object):
     cursor_button_src = "graphics/Cursor_hot.png"
     cursor_button_hotspot = (9, 2)
 
+    font_src = 'freesansbold.ttf
+    font_size = 24
+
     def __init__(self, screen):
         self.screen = screen
         self.x = (screen.get_width() - self.size[0]) / 2
@@ -337,7 +343,7 @@ class Layout(object):
         self.coffee_break_off = pygame.image.load(self.coffee_break_off_src)
         self.quit_on = pygame.image.load(self.quit_on_src)
         self.quit_off = pygame.image.load(self.quit_off_src)
-        self.font = pygame.font.Font(None, 24)
+        self.font = pygame.font.Font(self.font_src, self.font_size)
         self.cursor_normal = (pygame.image.load(self.cursor_normal_src),) + self.cursor_normal_hotspot
         self.cursor_button = (pygame.image.load(self.cursor_button_src),) + self.cursor_button_hotspot
         self.cursor = self.cursor_normal
@@ -526,7 +532,7 @@ def main():
 
     effects = []
 
-    delta_t = 1.0 / 60 # fps
+    delta_t = 1.0 / 60 # fps; aim high!
     last_t = time.time()
     while True:
         # interact

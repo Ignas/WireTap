@@ -210,6 +210,13 @@ BGE2: Stop what you are doing, and assume the Party Escort Submission
 Position.
 BGE3: No one is killing the president! Not on my watch!
 
+BGE4: For your crimes you will answer to the Recording industry association of america!
+BGE5: Put down the Bomb and slowly step away!
+BGE6: You are surrounded, you have nowhere to run, you will not escape the justice.
+BGE7: I think we shot all of them, let's pack it up and go home.
+BGE8: <šnibždėti>The bomb has been planted</šnibždėti>. Oh, sorry, wrong game.
+BGE9: Counter terrorist WIN!
+
 Female:
 GGE1: Emm.. Uh... Someone please call 911, I think she just had a
 heart attack.
@@ -224,6 +231,8 @@ attack.
 
 Guys:
 
+kill, deception, bomb, fire
+
 Bla bla bla, bla bla. Bla bla kill bla. Bla bla bla deception bla bla. Bla bomb bla.
 
 Mu mu mu, mu mu. Mu mu kill mu. Mu mu mu deception mu mu. Mu bomb mu.
@@ -231,3 +240,13 @@ Mu mu mu, mu mu. Mu mu kill mu. Mu mu mu deception mu mu. Mu bomb mu.
 Mi mi mi, mi mi. Mi mi kill mi. Mi mi mi deception mi mi. Mi bomb mi.
 
 """
+
+Mr. Employee
+------------
+
+MMM nice coffee.
+
+Back to work!
+
+At last, now I'll just go home, sit down by the FIRE and watch a nice
+movie about BOMBS and DECEPTION! <go go go>
