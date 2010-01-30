@@ -35,13 +35,18 @@ class Console(object): # aka listening station
     def speaking(self):
         return self.active or self.swat_active
 
+    @property
+    def swat_engaged(self):
+        return self.swat_pending or self.swat_active or self.swat_arrived or self.swat_done
+
     def get_next_phrase(self):
         if self.personality:
             return self.personality.get_next_phrase(self.voice)
 
     def send_swat(self, delay=3):
-        self.swat_pending = delay
         self.listening = True
+        if not self.swat_engaged:
+            self.swat_pending = delay
 
     def kill(self):
         self.active = False
