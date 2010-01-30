@@ -8,6 +8,7 @@ from pygame.locals import *
 
 
 DEV_MODE = True
+SHOW_FPS = False
 
 
 class Voice(object):
@@ -314,6 +315,11 @@ class Layout(object):
     game_over_color = (254, 232, 123)
     game_over_text = 'Game Over'
 
+    cursor_normal_src = "graphics/Cursor.png"
+    cursor_normal_hotspot = (9, 2)
+    cursor_button_src = "graphics/Cursor_hot.png"
+    cursor_button_hotspot = (9, 2)
+
     def __init__(self, screen):
         self.screen = screen
         self.x = (screen.get_width() - self.size[0]) / 2
@@ -332,9 +338,10 @@ class Layout(object):
         self.quit_on = pygame.image.load(self.quit_on_src)
         self.quit_off = pygame.image.load(self.quit_off_src)
         self.font = pygame.font.Font(None, 24)
-        self.cursor_normal = pygame.cursors.arrow
-        self.cursor_button = pygame.cursors.diamond
+        self.cursor_normal = (pygame.image.load(self.cursor_normal_src),) + self.cursor_normal_hotspot
+        self.cursor_button = (pygame.image.load(self.cursor_button_src),) + self.cursor_button_hotspot
         self.cursor = self.cursor_normal
+        self.last_mouse_pos = pygame.mouse.get_pos()
 
     def console_pos(self, n):
         row, col = divmod(n, self.grid_cols)
@@ -348,7 +355,7 @@ class Layout(object):
         if 0 <= row < self.grid_rows and 0 <= col < self.grid_cols:
             return row * self.grid_cols + col
 
-    def draw(self, game):
+    def draw(self, game, effects):
         screen = self.screen
         # XXX maybe fill areas outside background, if any
         screen.blit(self.background, (self.x, self.y))
@@ -395,12 +402,19 @@ class Layout(object):
         t = font.render('Time left: %d:%02d' % divmod(game.time_limit, 60), True, (255, 255, 255))
         self.center_img(t, (self.x + 512, self.y + 680))
 
+        for e in effects:
+            e.draw(self.screen)
+
         if game.time_limit <= 0:
             t = self.font.render(self.game_over_text, True, self.game_over_color)
             self.center_img(t, self.pos, self.game_over_pos)
         elif game.paused:
             t = self.font.render(self.paused_text, True, self.paused_color)
             self.center_img(t, (self.x, self.y), self.paused_pos)
+
+        x, y = pygame.mouse.get_pos()
+        self.screen.blit(self.cursor[0], (x - self.cursor[1], y - self.cursor[2]))
+        self.last_mouse_pos = x, y
 
     def action(self, game, (x, y)):
         if self.in_button(x, y, self.quit_pos, self.quit_size, self.pos, self.quit_off):
@@ -430,13 +444,15 @@ class Layout(object):
             self.cursor = self.cursor_button
         else:
             self.cursor = self.cursor_normal
-        pygame.mouse.set_cursor(*self.cursor)
 
     def bye(self):
         t = self.font.render(self.bye_text, True, self.bye_color)
         self.center_img(t, (self.x, self.y), self.bye_pos)
         img = self.quit_on
         self.center_img(img, self.pos, self.quit_pos)
+
+        x, y = self.last_mouse_pos
+        self.screen.blit(self.cursor[0], (x - self.cursor[1], y - self.cursor[2]))
 
     def in_button(self, x, y, pos, size, delta=(0, 0), button=None):
         if (abs(x - pos[0] - delta[0]) < size[0] / 2 and
@@ -481,6 +497,7 @@ def prototype5():
     pygame.init()
     pygame.display.set_caption('Wiretap')
     pygame.mixer.set_num_channels(32)
+    pygame.mouse.set_visible(False)
 
     MODE = (1024, 768)
     fullscreen = True
@@ -511,7 +528,8 @@ def prototype5():
 
     font = pygame.font.Font(None, 24)
 
-    delta_t = 0.1
+    delta_t = 1.0 / 60 # fps
+    last_t = time.time()
     while True:
         # interact
         for event in pygame.event.get():
@@ -570,23 +588,27 @@ def prototype5():
                 channel.queue(c.get_next_phrase())
 
         # draw
-        layout.draw(game)
-        for e in effects:
-            e.draw(layout.screen)
+        layout.draw(game, effects)
         pygame.display.flip()
 
         # wait for next frame
-        time.sleep(delta_t)
+        next_t = last_t + delta_t
+        dt = max(0.01, next_t - time.time())
+        time.sleep(dt)
 
         # game logic
         if game.paused:
             continue
-        game.tick(delta_t)
-        effects = [e for e in effects if e.tick(delta_t)]
+        dt = time.time() - last_t
+        if SHOW_FPS:
+            print round(dt, 3), '\t', round(1.0 / dt, 1), 'fps'
+        game.tick(dt)
+        effects = [e for e in effects if e.tick(dt)]
         while game.effects:
             effect = layout.effect(game, game.effects.pop())
             if effect:
                 effects.append(effect)
+        last_t = time.time()
 
 
 if __name__ == '__main__':
