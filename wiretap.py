@@ -7,6 +7,9 @@ import pygame
 from pygame.locals import *
 
 
+INTEGRATED_DEBUGGER = True
+
+
 class Voice(object):
 
     male = True
@@ -53,6 +56,11 @@ class Console(object): # aka listening station
     def kill(self):
         self.active = False
         self.swat_arrived = True
+
+    def move_out(self):
+        self.listening = False
+        self.active = False
+        self.personality = NOBODY
 
 
 class BadGuy(object):
@@ -143,7 +151,7 @@ class Game(object):
                 self.kill_guy(c)
 
     def get_empty_consoles(self):
-        return [c for c in self.consoles if not c.active and not c.disabled]
+        return [c for c in self.consoles if not c.speaking and not c.disabled]
 
     def add_guy(self, personality):
         empty_consoles = self.get_empty_consoles()
@@ -163,14 +171,15 @@ class Game(object):
 
     def move_good_guy(self):
         console = self.good_guys.pop(0)
-        console.active = False
-        console.listening = False
+        console.move_out()
         self.add_good_guy()
 
     def kill_guy(self, console):
         self.effects.append(ScoreEffect(console, console.personality.score))
         self.score += console.personality.score
-        if console.personality.next_level_on_capture:
+        next_level = console.personality.next_level_on_capture
+        console.move_out()
+        if next_level:
             self.next_level()
 
     def next_level(self):
@@ -478,6 +487,11 @@ def prototype5():
                     layout.screen = pygame.display.set_mode(MODE, FULLSCREEN)
                 else:
                     layout.screen = pygame.display.set_mode(MODE, 0)
+            if event.type == KEYDOWN and event.unicode in ('d', 'D') and INTEGRATED_DEBUGGER:
+                if fullscreen:
+                    fullscreen = False
+                    layout.screen = pygame.display.set_mode(MODE, 0)
+                import pdb; pdb.set_trace()
             if event.type == MOUSEBUTTONUP:
                 layout.click(game, event.pos)
 
@@ -496,15 +510,15 @@ def prototype5():
             else:
                 channel.set_volume(0.0)
 
-            if c.active and channel.get_queue() is None:
-                channel.queue(c.get_next_phrase())
+            if c.swat_active and not channel.get_busy():
+                c.swat_active = False
+                c.swat_done = True
             elif c.swat_arrived:
                 c.swat_arrived = False
                 c.swat_active = True
                 channel.play(swat_sound)
-            elif c.swat_active and not channel.get_busy():
-                c.swat_active = False
-                c.swat_done = True
+            elif c.active and channel.get_queue() is None:
+                channel.queue(c.get_next_phrase())
 
         # draw
         layout.draw(game)
