@@ -224,6 +224,8 @@ attack.
 
 Guys:
 
+kill, deception, bomb, fire
+
 Bla bla bla, bla bla. Bla bla kill bla. Bla bla bla deception bla bla. Bla bomb bla.
 
 Mu mu mu, mu mu. Mu mu kill mu. Mu mu mu deception mu mu. Mu bomb mu.
