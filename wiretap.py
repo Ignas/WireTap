@@ -205,8 +205,15 @@ class ScoreBubble(object):
         self.y += self.dy * delta_t
         return True
 
+    def set_alpha(self, alpha):
+        r, g, b = self.color
+        r, g, b = r * alpha, g * alpha, b * alpha
+        self.surface = self.font.render(self.text, True, (r, g, b))
+
     def draw(self, screen):
         if self.time_left > 0:
+            if self.time_left < 1:
+                self.set_alpha(self.time_left)
             screen.blit(self.surface, (int(self.x), int(self.y)))
 
 
