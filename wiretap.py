@@ -65,6 +65,7 @@ class Console(object): # aka listening station
     def toggle_listening(self):
         self.listening = not self.listening
 
+
 class BadGuy(object):
 
     next_level_on_capture = True
@@ -176,6 +177,8 @@ class Game(object):
 
     def move_good_guy(self):
         console = self.good_guys.pop(0)
+        if console.swat_engaged:
+            return
         console.move_out()
         self.add_good_guy()
 
