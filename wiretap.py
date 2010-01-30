@@ -491,7 +491,7 @@ class Layout(object):
                            shadow=shadow)
 
 
-def prototype5():
+def main():
     # XXX attempting to use 44100 Hz causes 100% CPU
     pygame.mixer.pre_init(22050, -16, 2, 2048)
     pygame.init()
@@ -612,7 +612,7 @@ def prototype5():
 
 
 if __name__ == '__main__':
-    prototype5()
+    main()
     t0 = time.time()
     pygame.quit()
     if DEV_MODE:
