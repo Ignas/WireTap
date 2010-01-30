@@ -163,15 +163,11 @@ def prototype5():
 
     v1 = Voice()
     v1.benign_phrases = map(pygame.mixer.Sound,
-                            ['hi.wav', 'nice-weather.wav', 'whats-up.wav'])
+                            ['1_1.wav', '1_2.wav', '1_3.wav'])
     v1.suspicious_phrases = map(pygame.mixer.Sound,
-                                ['bomb-plans.wav', 'big-brother.wav'])
-    v2 = Voice()
-    v2.benign_phrases = map(pygame.mixer.Sound,
-                            ['hello.wav', 'weather-is-fine.wav'])
-    v2.suspicious_phrases = map(pygame.mixer.Sound,
-                                ['liquids.wav'])
-    voices = [v1, v2]
+                                ['1_deception.wav', '1_fire.wav',
+                                 '1_wire.wav', '1_wire.wav'])
+    voices = [v1]
     level1 = Level(3)
     game = Game(voices, level1)
 
