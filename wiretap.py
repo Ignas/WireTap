@@ -39,7 +39,7 @@ class Console(object): # aka listening station
         if self.personality:
             return self.personality.get_next_phrase(self.voice)
 
-    def send_swat(self, delay=5):
+    def send_swat(self, delay=3):
         self.swat_pending = delay
 
     def kill(self):
@@ -100,7 +100,7 @@ class Game(object):
         for c in self.consoles:
             if c.swat_pending:
                 c.swat_pending -= delta_t
-                if c.swat_pending <= 0:
+                if c.swat_pending < 1:
                     c.swat_pending = False
                     c.kill()
             if c.swat_done:
