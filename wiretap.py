@@ -23,7 +23,9 @@ class Console(object): # aka listening station
         self.listening = False
         self.active = False
         self.swat_pending = 0
-        self.pending_conversation = []
+        self.swat_arrived = False
+        self.swat_active = False
+        self.swat_done = False
         self.personality = None
 
     @property
@@ -37,9 +39,9 @@ class Console(object): # aka listening station
     def send_swat(self, delay=5):
         self.swat_pending = delay
 
-    def stop_conversation(self):
-        self.pending_conversation = []
-        self.current_phrase = None
+    def kill(self):
+        self.active = False
+        self.swat_arrived = True
 
 
 class BadGuy(object):
@@ -97,8 +99,10 @@ class Game(object):
                 c.swat_pending -= delta_t
                 if c.swat_pending <= 0:
                     c.swat_pending = False
-                    # kill dood
-                    self.kill_guy(c)
+                    c.kill()
+            if c.swat_done:
+                c.swat_done = False
+                self.kill_guy(c)
 
     def get_empty_consoles(self):
         return [c for c in self.consoles if not c.active]
@@ -125,7 +129,6 @@ class Game(object):
         self.add_good_guy()
 
     def kill_guy(self, console):
-        console.active = False
         self.score += console.personality.score
         if console.personality.next_level_on_capture:
             self.next_level()
@@ -169,6 +172,8 @@ def prototype5():
     voices = [v1]
     game = Game(voices)
 
+    swat_sound = pygame.mixer.Sound('swat.wav')
+
     font = pygame.font.Font(None, 24)
 
     while True:
@@ -199,7 +204,7 @@ def prototype5():
                         c = game.consoles[n]
                         c.send_swat()
 
-        # audio
+        # render audio
         active_channels = sum(c.listening and c.speaking for c in game.consoles) or 1
         for n, c in enumerate(game.consoles):
             channel = pygame.mixer.Channel(n)
@@ -210,8 +215,13 @@ def prototype5():
 
             if c.active and channel.get_queue() is None:
                 channel.queue(c.get_next_phrase())
-            elif c.get_next_phrase() is None and channel.get_busy():
-                channel.stop()
+            elif c.swat_arrived:
+                c.swat_arrived = False
+                c.swat_active = True
+                channel.play(swat_sound)
+            elif c.swat_active and not channel.get_busy():
+                c.swat_active = False
+                c.swat_done = True
 
         # draw
         screen.fill((0, 0, 0))
@@ -239,6 +249,8 @@ def prototype5():
             t = font.render(s, True, color)
             screen.blit(t, (x + 100 - t.get_width() / 2, y + 70))
 
+        t = font.render('Level: %d' % game.level, True, (255, 255, 255))
+        screen.blit(t, (10, 620))
         t = font.render('Score: %d' % game.score, True, (255, 255, 255))
         screen.blit(t, (10, 650))
         t = font.render('Time left: %d:%02d' % divmod(game.time_limit, 60), True, (255, 255, 255))
