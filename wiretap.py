@@ -48,7 +48,8 @@ class Household(object):
 
     def __init__(self, tenants=()):
         self.tenants = list(tenants)
-        self.current_conversation = []
+        self.pending_conversation = []
+        self.current_phrase = None
 
     def get_conversation(self, length):
         if self.tenants:
@@ -58,7 +59,7 @@ class Household(object):
             return []
 
     def initiate_conversation(self, length):
-        self.current_conversation = self.get_conversation(length)
+        self.pending_conversation = self.get_conversation(length)
 
 
 class Console(object): # aka listening station
@@ -69,7 +70,7 @@ class Console(object): # aka listening station
 
     @property
     def speaking(self):
-        return bool(self.household.current_conversation)
+        return self.household.current_phrase is not None
 
 
 class Level(object):
@@ -120,6 +121,7 @@ class Game(object):
                                    for m in range(n_persons)])
             self.consoles.append(Console(household))
         random.shuffle(self.consoles)
+        self.start_new_conversation()
 
     def count_active_conversations(self):
         return sum(c.speaking for c in self.consoles)
@@ -139,50 +141,85 @@ class Game(object):
         self.time_limit -= delta_t
         if self.time_limit < 0:
             self.time_limit = 0
-            # end of level
+            return # end of level
         if self.should_start_new_conversation(delta_t):
-            household = random.choice(self.get_silent_households())
-            length = self.level.pick_conversation_length()
-            household.initiate_conversation(length)
+            self.start_new_conversation()
+
+    def start_new_conversation(self):
+        silent_households = self.get_silent_households()
+        if not silent_households:
+            return
+        household = random.choice(silent_households)
+        length = self.level.pick_conversation_length()
+        household.initiate_conversation(length)
 
 
 
-def prototype4():
+def prototype5():
     pygame.init()
     pygame.display.set_caption('Wiretap')
+    pygame.mixer.set_num_channels(32)
     screen = pygame.display.set_mode((1024, 700), 0)
 
     v1 = Voice()
-    v1.benign_phrases = ["Hi!", "Nice weather out there.", "What's up?"]
-    v1.suspicious_phrases = ["The bomb plans are due tomorrow.",
-                             "What if big brother is watching us?"]
+    v1.benign_phrases = map(pygame.mixer.Sound,
+                            ['hi.wav', 'nice-weather.wav', 'whats-up.wav'])
+    v1.suspicious_phrases = map(pygame.mixer.Sound,
+                                ['bomb-plans.wav', 'big-brother.wav'])
     v2 = Voice()
-    v2.benign_phrases = ["Hello!", "The weather is particularly fine today."]
-    v2.suspicious_phrases = ["I have some liquid explosives in my bag."]
+    v2.benign_phrases = map(pygame.mixer.Sound,
+                            ['hello.wav', 'weather-is-fine.wav'])
+    v2.suspicious_phrases = map(pygame.mixer.Sound,
+                                ['liquids.wav'])
     voices = [v1, v2]
     level1 = Level(3)
     game = Game(voices, level1)
 
-    font = pygame.font.Font(None, 14)
+    for c in game.consoles:
+        c.listening = True
+
+    font = pygame.font.Font(None, 24)
 
     while True:
         # interact
         for event in pygame.event.get():
-            if event.type == QUIT:
+            if event.type == QUIT or event.type == KEYDOWN and (
+                event.key == K_ESCAPE or event.unicode in ('q', 'Q')):
+                t = font.render('Bye!', True, (254, 232, 123))
+                screen.blit(t, ((1024 - t.get_width()) / 2,
+                                (680 - t.get_height()) / 2))
+                pygame.display.update()
                 return
-            if event.type == KEYDOWN:
-                if event.key == K_ESCAPE or event.unicode in ('q', 'Q'):
-                    return
+        # audio
+        for n, c in enumerate(game.consoles):
+            channel = pygame.mixer.Channel(n)
+            if c.listening:
+                channel.set_volume(1.0)
+            else:
+                channel.set_volume(0.0)
+            h = c.household
+            if h.pending_conversation and channel.get_queue() is None:
+                h.current_phrase = h.pending_conversation.pop(0)
+                channel.queue(h.current_phrase)
+            elif h.current_phrase is not None and not channel.get_busy():
+                h.current_phrase = None
         # draw
         screen.fill((0, 0, 0))
         for n, c in enumerate(game.consoles):
             row, col = divmod(n, 4)
             x, y = col * 1024/4, row * 700/4
             if c.speaking:
-                color = (0, 200, 0)
+                color = (100, 200, 0)
+                r = 11
             else:
                 color = (0, 100, 0)
-            pygame.draw.circle(screen, color, (x + 40, y + 40), 10)
+                r = 10
+            pygame.draw.circle(screen, color, (x + 40, y + 40), r)
+            if c.listening:
+                color = (200, 150, 10)
+            else:
+                color = (100, 50, 0)
+            pygame.draw.circle(screen, color, (x + 140, y + 40), 10)
 
         t = font.render('Time left: %d' % game.time_limit, True, (255, 255, 255))
         screen.blit(t, (10, 680))
@@ -193,10 +230,9 @@ def prototype4():
 
 
 if __name__ == '__main__':
-    prototype4()
+    prototype5()
     print "Quitting!"
     t0 = time.time()
     pygame.quit()
     print "WTF did pygame.quit() do during the last %.1f seconds?" % (time.time() - t0)
-    print "Bye!"
 
