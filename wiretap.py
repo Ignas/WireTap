@@ -351,20 +351,19 @@ class Layout(object):
             self.center_img(t, self.pos, self.game_over_pos)
 
     def click(self, game, (x, y)):
+        if self.in_button(x, y, self.quit_pos, self.quit_size, self.pos):
+            pygame.event.post(pygame.event.Event(QUIT))
+        if self.in_button(x, y, self.coffee_break_pos, self.coffee_break_size, self.pos):
+            game.paused = not game.paused
         n = self.console_idx(x, y)
-        if n is None:
+        if n is None or not game.running:
             return
         pos = self.console_pos(n)
         c = game.consoles[n]
-        if game.running:
-            if self.in_button(x, y, self.listening_pos, self.listening_size, pos):
-                c.listening = not c.listening
-            if self.in_button(x, y, self.swat_pos, self.swat_size, pos):
-                c.send_swat()
-        if self.in_button(x, y, self.quit_pos, self.quit_size, self.pos):
-            pygame.event.post(QUIT)
-        if self.in_button(x, y, self.coffee_break_pos, self.coffee_break_size, self.pos):
-            game.paused = not game.paused
+        if self.in_button(x, y, self.listening_pos, self.listening_size, pos):
+            c.listening = not c.listening
+        if self.in_button(x, y, self.swat_pos, self.swat_size, pos):
+            c.send_swat()
 
     def bye(self):
         t = self.font.render(self.bye_text, True, self.bye_color)
