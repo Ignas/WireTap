@@ -22,6 +22,8 @@ class Voice(object):
 
 class Console(object): # aka listening station
 
+    disabled = False
+
     def __init__(self):
         self.listening = False
         self.active = False
@@ -110,6 +112,8 @@ class Game(object):
 
         for n in range(self.n_consoles):
             self.consoles.append(Console())
+        self.consoles[11].disabled = True
+        self.consoles[13].disabled = True
 
         self.start()
 
@@ -139,7 +143,7 @@ class Game(object):
                 self.kill_guy(c)
 
     def get_empty_consoles(self):
-        return [c for c in self.consoles if not c.active]
+        return [c for c in self.consoles if not c.active and not c.disabled]
 
     def add_guy(self, personality):
         empty_consoles = self.get_empty_consoles()
@@ -325,6 +329,9 @@ class Layout(object):
         # XXX maybe fill areas outside background, if any
         screen.blit(self.background, (self.x, self.y))
         for n, c in enumerate(game.consoles):
+            if c.disabled:
+                continue
+
             pos = self.console_pos(n)
 
             if c.swat_engaged:
@@ -376,8 +383,10 @@ class Layout(object):
         n = self.console_idx(x, y)
         if n is None or not game.running:
             return
-        pos = self.console_pos(n)
         c = game.consoles[n]
+        if c.disabled:
+            return
+        pos = self.console_pos(n)
         if self.in_button(x, y, self.listening_pos, self.listening_size, pos):
             c.listening = not c.listening
         if self.in_button(x, y, self.swat_pos, self.swat_size, pos):
