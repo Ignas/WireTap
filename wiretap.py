@@ -476,6 +476,11 @@ def prototype5():
         active_channels = (active_channels + 1.0) / 2 # slower attenuation
         for n, c in enumerate(game.consoles):
             channel = pygame.mixer.Channel(n)
+            if not game.running:
+                channel.pause()
+                continue
+            channel.unpause()
+
             if c.listening:
                 channel.set_volume(1.0 / active_channels)
             else:
