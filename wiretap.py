@@ -1,7 +1,9 @@
 #!/usr/bin/python
 import random
+import time
 
 import pygame
+from pygame.locals import *
 
 
 class Voice(object):
@@ -144,7 +146,12 @@ class Game(object):
             household.initiate_conversation(length)
 
 
-def prototype3():
+
+def prototype4():
+    pygame.init()
+    pygame.display.set_caption('Wiretap')
+    screen = pygame.display.set_mode((1024, 700), 0)
+
     v1 = Voice()
     v1.benign_phrases = ["Hi!", "Nice weather out there.", "What's up?"]
     v1.suspicious_phrases = ["The bomb plans are due tomorrow.",
@@ -156,15 +163,40 @@ def prototype3():
     level1 = Level(3)
     game = Game(voices, level1)
 
-    n = 0
-    while game.time_limit > 0:
-        game.tick(1)
-        n += 1
-        print "***", n
-        for c in game.consoles:
+    font = pygame.font.Font(None, 14)
+
+    while True:
+        # interact
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                return
+            if event.type == KEYDOWN:
+                if event.key == K_ESCAPE or event.unicode in ('q', 'Q'):
+                    return
+        # draw
+        screen.fill((0, 0, 0))
+        for n, c in enumerate(game.consoles):
+            row, col = divmod(n, 4)
+            x, y = col * 1024/4, row * 700/4
             if c.speaking:
-                print c.household.current_conversation.pop(0)
+                color = (0, 200, 0)
+            else:
+                color = (0, 100, 0)
+            pygame.draw.circle(screen, color, (x + 40, y + 40), 10)
+
+        t = font.render('Time left: %d' % game.time_limit, True, (255, 255, 255))
+        screen.blit(t, (10, 680))
+        pygame.display.flip()
+        # wait
+        time.sleep(0.1)
+        game.tick(0.1)
 
 
 if __name__ == '__main__':
-    prototype3()
+    prototype4()
+    print "Quitting!"
+    t0 = time.time()
+    pygame.quit()
+    print "WTF did pygame.quit() do during the last %.1f seconds?" % (time.time() - t0)
+    print "Bye!"
+
