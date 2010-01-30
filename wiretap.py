@@ -524,17 +524,17 @@ def main():
     while True:
         v = Voice()
         v.benign_phrases = map(pygame.mixer.Sound,
-                               glob.glob('sounds/p%d_good*.wav' % n))
+                               glob.glob('sounds/p%d_good*.ogg' % n))
         v.suspicious_phrases = map(pygame.mixer.Sound,
-                                   glob.glob('sounds/p%d_bad*.wav' % n))
+                                   glob.glob('sounds/p%d_bad*.ogg' % n))
         if not v.benign_phrases or not v.suspicious_phrases:
             break
-        v.male = bool(glob.glob('sounds/p%d_*_m.wav'))
+        v.male = bool(glob.glob('sounds/p%d_*_m.ogg'))
         n += 1
         voices.append(v)
     game = Game(voices)
 
-    swat_sound = pygame.mixer.Sound('swat.wav')
+    swat_sound = pygame.mixer.Sound('swat.ogg')
 
     effects = []
 
