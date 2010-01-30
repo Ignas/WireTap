@@ -190,6 +190,15 @@ def prototype5():
                                 (680 - t.get_height()) / 2))
                 pygame.display.update()
                 return
+            if event.type == MOUSEBUTTONUP:
+                if (abs(event.pos[0] % (1024/4) - 140) <= 11
+                    and abs(event.pos[1] % (700/4) - 40) <= 11):
+                    row = event.pos[1] / (700/4)
+                    col = event.pos[0] / (1024/4)
+                    if 0 <= row < 4 and 0 <= col < 4:
+                        n = row * 4 + col
+                        c = game.consoles[n]
+                        c.listening = not c.listening
         # audio
         for n, c in enumerate(game.consoles):
             channel = pygame.mixer.Channel(n)
