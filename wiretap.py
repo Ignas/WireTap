@@ -62,6 +62,8 @@ class Console(object): # aka listening station
         self.active = False
         self.personality = NOBODY
 
+    def toggle_listening(self):
+        self.listening = not self.listening
 
 class BadGuy(object):
 
@@ -128,6 +130,9 @@ class Game(object):
     def start(self):
         self.level = 1
         self.add_bad_guy()
+
+    def toggle_paused(self):
+        self.paused = not self.paused
 
     @property
     def running(self):
@@ -320,6 +325,9 @@ class Layout(object):
         self.quit_on = pygame.image.load(self.quit_on_src)
         self.quit_off = pygame.image.load(self.quit_off_src)
         self.font = pygame.font.Font(None, 24)
+        self.cursor_normal = pygame.cursors.arrow
+        self.cursor_button = pygame.cursors.diamond
+        self.cursor = self.cursor_normal
 
     def console_pos(self, n):
         row, col = divmod(n, self.grid_cols)
@@ -384,11 +392,11 @@ class Layout(object):
             t = self.font.render(self.game_over_text, True, self.game_over_color)
             self.center_img(t, self.pos, self.game_over_pos)
 
-    def click(self, game, (x, y)):
+    def action(self, game, (x, y)):
         if self.in_button(x, y, self.quit_pos, self.quit_size, self.pos):
-            pygame.event.post(pygame.event.Event(QUIT))
+            return lambda: pygame.event.post(pygame.event.Event(QUIT))
         if self.in_button(x, y, self.coffee_break_pos, self.coffee_break_size, self.pos):
-            game.paused = not game.paused
+            return game.toggle_paused
         n = self.console_idx(x, y)
         if n is None or not game.running:
             return
@@ -397,9 +405,22 @@ class Layout(object):
             return
         pos = self.console_pos(n)
         if self.in_button(x, y, self.listening_pos, self.listening_size, pos):
-            c.listening = not c.listening
+            return lambda: c.toggle_listening()
         if self.in_button(x, y, self.swat_pos, self.swat_size, pos):
-            c.send_swat()
+            return lambda: c.send_swat()
+
+    def click(self, game, (x, y)):
+        action = self.action(game, (x, y))
+        if action:
+            action()
+
+    def hover(self, game, (x, y)):
+        action = self.action(game, (x, y))
+        if action:
+            self.cursor = self.cursor_button
+        else:
+            self.cursor = self.cursor_normal
+        pygame.mouse.set_cursor(*self.cursor)
 
     def bye(self):
         t = self.font.render(self.bye_text, True, self.bye_color)
@@ -499,6 +520,7 @@ def prototype5():
                     game.add_good_guy()
                 if event.type == KEYDOWN and event.unicode in ('b', 'B'):
                     game.add_bad_guy()
+        layout.hover(game, pygame.mouse.get_pos())
 
         # render audio
         active_channels = sum(c.listening and c.speaking for c in game.consoles) or 1
