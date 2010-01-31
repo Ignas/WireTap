@@ -287,23 +287,26 @@ class Game(object):
         self.voices = voices
         self.swat_voices = swat_voices
         self.intro_voice = intro_voice
+        self.paused = False
+        self.quitting = False
+
+        self.restart()
+        self.effects = [GameStartedEffect()]
+
+    def restart(self):
         self.score = 0
         self.level = 0
         self.bad_guys_caught = 0
         self.good_guys_detained = 0
         self.good_guys = []
-        self.effects = [GameStartedEffect()]
+        self.effects = []
         self.logic = []
+        self.time_left = self.time_limit
         self.paused = False
-        self.quitting = False
+
         self.consoles = [Console() for n in range(self.n_consoles)]
         for n in self.initially_disabled:
             self.consoles[n].disabled = True
-
-        self.start()
-
-    def start(self):
-        self.level = 0
         self.add_guy(INTRO_GUY).listening = True
 
     def quit(self):
@@ -314,7 +317,7 @@ class Game(object):
 
     @property
     def over(self):
-        return self.time_limit <= 0
+        return self.time_left <= 0
 
     @property
     def running(self):
@@ -332,9 +335,9 @@ class Game(object):
 
     def tick(self, delta_t):
         if self.level > 0:
-            self.time_limit -= delta_t
-            if self.time_limit <= 0:
-                self.time_limit = 0
+            self.time_left -= delta_t
+            if self.time_left <= 0:
+                self.time_left = 0
                 return # end of game
 
         for c in self.consoles:
@@ -578,6 +581,10 @@ class Layout(object):
     paused_color = (254, 232, 123)
     paused_text = 'Enjoy your coffee!'
 
+    restart_pos = 512, 430
+    restart_color = (254, 232, 123)
+    restart_text = 'Press R to play again'
+
     level_pos = 512, 200
     level_color = (20, 200, 20)
     level_shadow = (0, 0, 0)
@@ -698,11 +705,11 @@ class Layout(object):
                         self.pos, self.bad_guys_pos)
         self.score_text(game.good_guys_detained, self.victims_color,
                         self.pos, self.victims_pos)
-        if game.time_limit < 60:
+        if game.time_left < 60:
             color = self.time_left_low_color
         else:
             color = self.time_left_color
-        self.score_text('%d:%02d' % divmod(game.time_limit, 60),
+        self.score_text('%d:%02d' % divmod(game.time_left, 60),
                         color, self.pos, self.time_left_pos)
 
         for e in effects:
@@ -714,6 +721,10 @@ class Layout(object):
         if game.over:
             self.center_text(self.game_over_text, self.game_over_color,
                              self.pos, self.game_over_pos)
+            if not game.quitting:
+                self.center_text(self.restart_text, self.restart_color,
+                                 self.pos, self.restart_pos,
+                                 font=self.font)
         if game.paused:
             self.center_text(self.paused_text, self.paused_color,
                              self.pos, self.paused_pos)
@@ -796,12 +807,15 @@ class Layout(object):
         self.screen.blit(img, (pos[0] + delta[0] - img.get_width() / 2,
                                pos[1] + delta[1] - img.get_height() / 2))
 
-    def center_text(self, text, color, pos, delta=(0, 0), shadow=(0, 0, 0)):
+    def center_text(self, text, color, pos, delta=(0, 0), shadow=(0, 0, 0),
+                    font=None):
         text = unicode(text)
+        if font is None:
+            font = self.big_font
         if shadow:
-            img = self.big_font.render(text, True, shadow)
+            img = font.render(text, True, shadow)
             self.center_img(img, (pos[0] + 3, pos[1] + 3), delta)
-        img = self.big_font.render(text, True, color)
+        img = font.render(text, True, color)
         self.center_img(img, pos, delta)
 
     def score_text(self, text, color, pos, delta=(0, 0)):
@@ -962,6 +976,9 @@ def main():
                 layout.toggle_fullscreen()
             if event.type == MOUSEBUTTONUP:
                 layout.click(game, event.pos)
+            if event.type == KEYDOWN and event.unicode in ('r', 'R'):
+                if game.over and not game.quitting:
+                    game.restart()
             if DEV_MODE:
                 if event.type == KEYDOWN and event.unicode in ('d', 'D'):
                     if layout.fullscreen:
@@ -972,7 +989,9 @@ def main():
                 if event.type == KEYDOWN and event.unicode in ('b', 'B'):
                     game.add_bad_guy()
                 if event.type == KEYDOWN and event.unicode in ('t', 'T'):
-                    game.time_limit = 5
+                    game.time_left = 5
+                if event.type == KEYDOWN and event.unicode in ('n', 'N'):
+                    game.next_level()
         layout.hover(game, pygame.mouse.get_pos())
 
         # render audio
@@ -981,6 +1000,8 @@ def main():
         for n, c in enumerate(game.consoles):
             channel = pygame.mixer.Channel(n)
             if not game.running:
+                if game.over:
+                    channel.stop()
                 channel.pause()
                 continue
             channel.unpause()
