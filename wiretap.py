@@ -576,20 +576,22 @@ class Layout(object):
     quit_off_src = "graphics/Quit.png"
     quit_on_src = "graphics/Quit_pressed.png"
 
+    game_state_color = (204, 204, 204)
+
     game_over_pos = 512, 250
-    game_over_color = (254, 232, 123)
+    game_over_color = game_state_color
     game_over_text = 'Game Over'
 
     bye_pos = 512, 340
-    bye_color = (254, 232, 123)
+    bye_color = game_state_color
     bye_text = 'Bye!'
 
     paused_pos = 512, 430
-    paused_color = (254, 232, 123)
+    paused_color = game_state_color
     paused_text = 'Enjoy your coffee!'
 
     restart_pos = 512, 430
-    restart_color = (254, 232, 123)
+    restart_color = game_state_color
     restart_text = 'Press R to play again'
 
     level_pos = 512, 160
