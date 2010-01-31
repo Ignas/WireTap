@@ -438,11 +438,11 @@ class Layout(object):
             e.draw(self.screen)
 
         if game.over:
-            t = self.font.render(self.game_over_text, True, self.game_over_color)
-            self.center_img(t, self.pos, self.game_over_pos)
-        elif game.paused:
-            t = self.font.render(self.paused_text, True, self.paused_color)
-            self.center_img(t, (self.x, self.y), self.paused_pos)
+            self.center_text(self.game_over_text, self.game_over_color,
+                             self.pos, self.game_over_pos)
+        if game.paused:
+            self.center_text(self.paused_text, self.paused_color,
+                             self.pos, self.paused_pos)
 
         if self.use_custom_cursor:
             pygame.mouse.set_visible(False)
@@ -485,8 +485,7 @@ class Layout(object):
             self.cursor = self.cursor_normal
 
     def bye(self):
-        t = self.font.render(self.bye_text, True, self.bye_color)
-        self.center_img(t, (self.x, self.y), self.bye_pos)
+        self.center_text(self.bye_text, self.bye_color, self.pos, self.bye_pos)
         img = self.quit_on
         self.center_img(img, self.pos, self.quit_pos)
 
@@ -509,6 +508,13 @@ class Layout(object):
     def center_img(self, img, pos, delta=(0, 0)):
         self.screen.blit(img, (pos[0] + delta[0] - img.get_width() / 2,
                                pos[1] + delta[1] - img.get_height() / 2))
+
+    def center_text(self, text, color, pos, delta=(0, 0), shadow=(0, 0, 0)):
+        if shadow:
+            img = self.font.render(str(text), True, shadow)
+            self.center_img(img, (pos[0] + 1, pos[1] + 1), delta)
+        img = self.font.render(str(text), True, color)
+        self.center_img(img, pos, delta)
 
     def score_text(self, text, color, pos, delta=(0, 0)):
         img = self.font.render(str(text), True, color)
@@ -606,6 +612,8 @@ def main():
                     game.add_good_guy()
                 if event.type == KEYDOWN and event.unicode in ('b', 'B'):
                     game.add_bad_guy()
+                if event.type == KEYDOWN and event.unicode in ('t', 'T'):
+                    game.time_limit = 5
         layout.hover(game, pygame.mouse.get_pos())
 
         # render audio
