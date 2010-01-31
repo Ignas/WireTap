@@ -290,8 +290,12 @@ class Game(object):
         self.intro_voice = intro_voice
         self.paused = False
         self.quitting = False
+        self.splash = True
 
         self.restart(tutorial=True)
+
+    def start(self):
+        self.splash = False
 
     def restart(self, tutorial=False):
         self.score = 0
@@ -325,7 +329,7 @@ class Game(object):
 
     @property
     def running(self):
-        return not self.paused and not self.over and not self.quitting
+        return not self.paused and not self.over and not self.quitting and not self.splash
 
     @property
     def swat_voices_with_male_apologies(self):
@@ -594,6 +598,10 @@ class Layout(object):
     restart_color = game_state_color
     restart_text = 'Press R to play again'
 
+    splash_pos = game_over_pos
+    splash_color = game_state_color
+    splash_text = 'Click anywhere to start'
+
     level_pos = 512, 160
     level_color = (20, 200, 20)
     level_shadow = (0, 0, 0)
@@ -709,9 +717,12 @@ class Layout(object):
                 img = self.swat_inactive
             self.center_img(img, pos, self.swat_pos)
 
-        if not game.paused or game.quitting:
+        if not game.paused or game.quitting or game.splash:
             self.center_img(self.coffee_break_off, self.pos,
                             self.coffee_break_pos)
+
+        if game.splash:
+            self.center_img(self.quit_off, self.pos, self.quit_pos)
 
         self.score_text(game.bad_guys_caught, self.bad_guys_color,
                         self.pos, self.bad_guys_pos)
@@ -730,6 +741,10 @@ class Layout(object):
         if not game.running:
             self.fadeout((0, 0), self.size)
 
+        if game.splash:
+            self.center_text(self.splash_text, self.splash_color,
+                             self.pos, self.splash_pos)
+
         if game.over:
             self.center_text(self.game_over_text, self.game_over_color,
                              self.pos, self.game_over_pos)
@@ -747,7 +762,7 @@ class Layout(object):
         if game.quitting:
             self.center_text(self.bye_text, self.bye_color, self.pos, self.bye_pos)
             self.center_img(self.quit_on, self.pos, self.quit_pos)
-        else:
+        elif not game.splash:
             self.center_img(self.quit_off, self.pos, self.quit_pos)
 
         if self.use_custom_cursor:
@@ -772,6 +787,8 @@ class Layout(object):
         self.screen.blit(self.cursor[0], (x - self.cursor[1], y - self.cursor[2]))
 
     def action(self, game, (x, y)):
+        if game.splash:
+            return game.start
         if self.in_button(x, y, self.quit_pos, self.quit_size, self.pos, self.quit_off):
             return lambda: pygame.event.post(pygame.event.Event(QUIT))
         if game.over or game.quitting:
@@ -986,7 +1003,7 @@ def main():
                     game.quit()
             if event.type == KEYDOWN and (event.unicode in ('p', 'P') or
                 event.key == K_PAUSE):
-                if not game.over and not game.quitting:
+                if not game.over and not game.quitting and not game.splash:
                     game.toggle_paused()
             if event.type == KEYDOWN and (event.unicode in ('f', 'F') or
                 event.key in (K_RETURN, K_KP_ENTER) and event.mod & KMOD_ALT):
