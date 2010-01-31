@@ -120,7 +120,9 @@ class BadGuy(Personality):
         return random.choice(voice.all_phrases)
 
 
-class IntroGuy(BadGuy):
+class IntroGuy(Personality):
+
+    next_level_on_capture = True
 
     def pick_voice(self, voices, intro_voice):
         return intro_voice
@@ -290,10 +292,9 @@ class Game(object):
         self.paused = False
         self.quitting = False
 
-        self.restart()
-        self.effects = [GameStartedEffect()]
+        self.restart(tutorial=True)
 
-    def restart(self):
+    def restart(self, tutorial=False):
         self.score = 0
         self.level = 0
         self.bad_guys_caught = 0
@@ -307,7 +308,12 @@ class Game(object):
         self.consoles = [Console() for n in range(self.n_consoles)]
         for n in self.initially_disabled:
             self.consoles[n].disabled = True
-        self.add_guy(INTRO_GUY).listening = True
+        if tutorial:
+            self.add_guy(INTRO_GUY).listening = True
+            self.effects.append(GameStartedEffect())
+        else:
+            self.next_level()
+            self.effects.append(LevelEffect(self.level))
 
     def quit(self):
         self.quitting = True
