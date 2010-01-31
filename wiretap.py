@@ -279,7 +279,7 @@ class EmptyConsole(PieceOfLogic):
 
 class Game(object):
 
-    time_limit = 300
+    time_limit = 4 * 60
     n_consoles = 16
     initially_disabled = [11, 13]
 
@@ -303,7 +303,7 @@ class Game(object):
         self.start()
 
     def start(self):
-        self.level = 1
+        self.level = 0
         self.add_guy(INTRO_GUY).listening = True
 
     def quit(self):
@@ -331,10 +331,11 @@ class Game(object):
                 or self.swat_voices)
 
     def tick(self, delta_t):
-        self.time_limit -= delta_t
-        if self.time_limit <= 0:
-            self.time_limit = 0
-            return # end of level
+        if self.level > 0:
+            self.time_limit -= delta_t
+            if self.time_limit <= 0:
+                self.time_limit = 0
+                return # end of game
 
         for c in self.consoles:
             if c.active:
@@ -428,12 +429,14 @@ class Game(object):
             self.chain_logic(logic)
 
     def next_level(self):
-        db = self.level in (4, 7, 12) and 2 or 1
+        level = self.level - 1
+
+        db = level in (4, 7, 12) and 2 or 1
 
         mg = 0
-        if self.level >= 3:
+        if level >= 3:
             mg = 1
-        elif self.level >= 8:
+        elif level >= 8:
             mg = 2
 
         dg = 2 - db
