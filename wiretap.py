@@ -123,6 +123,12 @@ class CountdownEffect(object):
         self.time_left = time_left
 
 
+class LevelEffect(object):
+
+    def __init__(self, level):
+        self.level = level
+
+
 class PieceOfLogic(object):
     next = None
 
@@ -199,8 +205,8 @@ class NextLevel(PieceOfLogic):
         self.game = game
 
     def tick(self, delta_t):
-        # TODO: big floating "level 3" thingy
         self.game.next_level()
+        self.game.effects.append(LevelEffect(self.game.level))
         return False
 
 
@@ -503,6 +509,10 @@ class Layout(object):
     paused_color = (254, 232, 123)
     paused_text = 'Enjoy your coffee!'
 
+    level_pos = 512, 200
+    level_color = (232, 254, 123)
+    level_shadow = (0, 0, 0)
+
     cursor_normal_src = "graphics/Cursor.png"
     cursor_normal_hotspot = (9, 2)
     cursor_button_src = "graphics/Cursor_hot.png"
@@ -746,6 +756,15 @@ class Layout(object):
                                color, self.font, time=ef.time_left,
                                shadow=shadow)
 
+    def effect_LevelEffect(self, game, ef):
+        color = self.level_color
+        shadow = self.level_shadow
+        x, y = self.level_pos
+        return ScoreBubble(self.x + x,
+                           self.y + y,
+                           'Level %d' % ef.level, color, self.big_font,
+                           shadow=shadow)
+
 
 def main():
     # XXX attempting to use 44100 Hz causes 100% CPU
@@ -868,6 +887,7 @@ def main():
 
         # game logic
         if game.paused:
+            last_t = time.time()
             continue
         dt = time.time() - last_t
         if SHOW_FPS:
