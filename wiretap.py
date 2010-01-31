@@ -7,7 +7,8 @@ import sys
 import math
 
 import pygame
-from pygame.locals import (FULLSCREEN, QUIT, KEYDOWN, MOUSEBUTTONUP,
+from pygame.locals import (FULLSCREEN,
+                           QUIT, KEYDOWN, MOUSEBUTTONUP, MOUSEBUTTONDOWN,
                            K_ESCAPE, K_RETURN, K_KP_ENTER, K_PAUSE, KMOD_ALT)
 
 # tell py2exe what we use
@@ -389,7 +390,7 @@ class Game(object):
 
 class ScoreBubble(object):
 
-    def __init__(self, x, y, text, color, font, time=3, dx=0, dy=-10, shadow=None):
+    def __init__(self, x, y, text, color, font, time=3, dx=0, dy=-10, shadow=None, shadow_offset=1):
         self.x = x
         self.y = y
         self.dx = dx
@@ -399,6 +400,7 @@ class ScoreBubble(object):
         self.font = font
         self.surface = font.render(text, True, color)
         self.shadow = shadow
+        self.shadow_offset = shadow_offset
         if shadow:
             self.shadow_surface = font.render(text, True, shadow)
         else:
@@ -431,7 +433,9 @@ class ScoreBubble(object):
             if self.time_left < 1:
                 self.set_alpha(self.time_left)
             if self.shadow_surface:
-                screen.blit(self.shadow_surface, (int(self.x) + 1, int(self.y) + 1))
+                screen.blit(self.shadow_surface,
+                            (int(self.x) + self.shadow_offset,
+                             int(self.y) + self.shadow_offset))
             screen.blit(self.surface, (int(self.x), int(self.y)))
 
 
@@ -510,7 +514,7 @@ class Layout(object):
     paused_text = 'Enjoy your coffee!'
 
     level_pos = 512, 200
-    level_color = (232, 254, 123)
+    level_color = (20, 200, 20)
     level_shadow = (0, 0, 0)
 
     cursor_normal_src = "graphics/Cursor.png"
@@ -763,7 +767,7 @@ class Layout(object):
         return ScoreBubble(self.x + x,
                            self.y + y,
                            'Level %d' % ef.level, color, self.big_font,
-                           shadow=shadow)
+                           shadow=shadow, shadow_offset=3)
 
 
 def main():
@@ -820,10 +824,12 @@ def main():
 
     nice_coffee = pygame.mixer.Sound('sounds/actions/nice_coffee.ogg')
     back_to_work = pygame.mixer.Sound('sounds/actions/back_to_work.ogg')
+    click_sound = pygame.mixer.Sound('sounds/actions/cik.ogg')
 
     game = Game(voices, swat_voices)
 
     coffee_break_channel = pygame.mixer.Channel(len(game.consoles))
+    sfx_channel = pygame.mixer.Channel(len(game.consoles) + 1)
 
     effects = []
 
@@ -851,6 +857,9 @@ def main():
             if event.type == KEYDOWN and (event.unicode in ('f', 'F') or
                 event.key in (K_RETURN, K_KP_ENTER) and event.mod & KMOD_ALT):
                 layout.toggle_fullscreen()
+            if event.type == MOUSEBUTTONDOWN:
+                if layout.action(game, event.pos):
+                    sfx_channel.play(click_sound)
             if event.type == MOUSEBUTTONUP:
                 layout.click(game, event.pos)
             if DEV_MODE:
