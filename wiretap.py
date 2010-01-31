@@ -338,7 +338,7 @@ class Layout(object):
     cursor_button_src = "graphics/Cursor_hot.png"
     cursor_button_hotspot = (9, 2)
 
-    font_src = 'freesansbold.ttf'
+    font_src = 'fonts/Sniglet.ttf'
     font_size = 24
 
     time_left_pos = 420, 666
