@@ -117,7 +117,8 @@ class BadGuy(Personality):
     gloat = True
 
     def get_next_phrase(self, voice):
-        return random.choice(voice.all_phrases)
+        if voice.all_phrases:
+            return random.choice(voice.all_phrases)
 
 
 class IntroGuy(Personality):
@@ -128,7 +129,8 @@ class IntroGuy(Personality):
         return intro_voice
 
     def get_next_phrase(self, voice):
-        return random.choice(voice.loop_phrases)
+        if voice.loop_phrases:
+            return random.choice(voice.loop_phrases)
 
     def get_first_phrase(self, voice):
         return voice.first_phrase
