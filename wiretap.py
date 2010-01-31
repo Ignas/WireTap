@@ -7,8 +7,7 @@ import sys
 import math
 
 import pygame
-from pygame.locals import (FULLSCREEN,
-                           QUIT, KEYDOWN, MOUSEBUTTONUP, MOUSEBUTTONDOWN,
+from pygame.locals import (FULLSCREEN, QUIT, KEYDOWN, MOUSEBUTTONUP,
                            K_ESCAPE, K_RETURN, K_KP_ENTER, K_PAUSE, KMOD_ALT)
 
 # tell py2exe what we use
@@ -37,6 +36,13 @@ class Voice(object):
         return self.benign_phrases + self.suspicious_phrases
 
 
+class IntroVoice(object):
+
+    def __init__(self):
+        self.first_phrase = None
+        self.loop_phrases = []
+
+
 class SwatVoice(object):
 
     def __init__(self):
@@ -56,13 +62,17 @@ class Console(object): # aka listening station
         self.active = False
         self.swat_engaged = False
         self.personality = NOBODY
+        self.first_phrase = True
 
     @property
     def speaking(self):
         return self.active or self.swat_engaged
 
     def get_next_phrase(self):
-        if self.personality:
+        if self.first_phrase:
+            self.first_phrase = False
+            return self.personality.get_first_phrase(self.voice)
+        else:
             return self.personality.get_next_phrase(self.voice)
 
     def move_out(self):
@@ -70,44 +80,73 @@ class Console(object): # aka listening station
         self.active = False
         self.swat_engaged = False
         self.personality = NOBODY
+        self.first_phrase = True
 
     def toggle_listening(self):
         self.listening = not self.listening
 
 
-class BadGuy(object):
+class Personality(object):
+
+    next_level_on_capture = False
+    score = 0
+    good_guys_detained = 0
+    bad_guys_caught = 0
+    apologize = False
+    gloat = False
+
+    def pick_voice(self, voices, intro_voice):
+        return random.choice(voices)
+
+    def get_next_phrase(self, voice):
+        return None
+
+    def get_first_phrase(self, voice):
+        return self.get_next_phrase(voice)
+
+
+class BadGuy(Personality):
 
     next_level_on_capture = True
 
     score = 1
+    bad_guys_caught = 1
+    gloat = True
 
     def get_next_phrase(self, voice):
         return random.choice(voice.all_phrases)
 
 
-class GoodGuy(object):
+class IntroGuy(BadGuy):
 
-    next_level_on_capture = False
+    def pick_voice(self, voices, intro_voice):
+        return intro_voice
+
+    def get_next_phrase(self, voice):
+        return random.choice(voice.loop_phrases)
+
+    def get_first_phrase(self, voice):
+        return voice.first_phrase
+
+
+class GoodGuy(Personality):
 
     score = -1
+    good_guys_detained = 1
+    apologize = True
 
     def get_next_phrase(self, voice):
         return random.choice(voice.benign_phrases)
 
 
-class Nobody(object):
-
-    next_level_on_capture = False
-
-    score = 0
-
-    def get_next_phrase(self, voice):
-        return None
+class Nobody(Personality):
+    pass
 
 
 NOBODY = Nobody()
 BAD_GUY = BadGuy()
 GOOD_GUY = GoodGuy()
+INTRO_GUY = IntroGuy()
 
 
 class GameStartedEffect(object):
@@ -197,10 +236,8 @@ class ScoreLogic(PieceOfLogic):
         game, console = self.game, self.console
         game.effects.append(ScoreEffect(console, console.personality.score))
         game.score += console.personality.score
-        if console.personality is GOOD_GUY:
-            game.good_guys_detained += 1
-        elif console.personality is BAD_GUY:
-            game.bad_guys_caught += 1
+        game.good_guys_detained += console.personality.good_guys_detained
+        game.bad_guys_caught += console.personality.bad_guys_caught
         return False
 
 
@@ -243,9 +280,10 @@ class Game(object):
     n_consoles = 16
     initially_disabled = [11, 13]
 
-    def __init__(self, voices, swat_voices):
+    def __init__(self, voices, swat_voices, intro_voice):
         self.voices = voices
         self.swat_voices = swat_voices
+        self.intro_voice = intro_voice
         self.score = 0
         self.level = 0
         self.bad_guys_caught = 0
@@ -262,7 +300,7 @@ class Game(object):
 
     def start(self):
         self.level = 1
-        self.add_bad_guy()
+        self.add_guy(INTRO_GUY).listening = True
 
     def toggle_paused(self):
         self.paused = not self.paused
@@ -314,14 +352,14 @@ class Game(object):
         console = random.choice(empty_consoles)
         console.personality = personality
         console.active = True
-        console.voice = random.choice(self.voices)
+        console.voice = personality.pick_voice(self.voices, self.intro_voice)
         return console
 
     def add_bad_guy(self):
-        return self.add_guy(BAD_GUY)
+        self.add_guy(BAD_GUY)
 
     def add_good_guy(self):
-        return self.good_guys.append(self.add_guy(GOOD_GUY))
+        self.good_guys.append(self.add_guy(GOOD_GUY))
 
     def move_good_guy(self):
         console = self.good_guys.pop(0)
@@ -336,10 +374,10 @@ class Game(object):
         console.listening = True
         if not console.swat_engaged:
             console.swat_engaged = True
-            if console.personality is BAD_GUY:
+            if console.personality.gloat:
                 voice = random.choice(self.swat_voices)
                 outcome_phrases = voice.gloat_phrases
-            elif console.personality is GOOD_GUY:
+            elif console.personality.apologize:
                 if console.voice.male:
                     voice = random.choice(self.swat_voices_with_male_apologies)
                     outcome_phrases = voice.apology_phrases_male
@@ -835,10 +873,14 @@ def main():
         n += 1
         swat_voices.append(v)
 
+    intro_voice = IntroVoice()
+    intro_voice.first_phrase = pygame.mixer.Sound('sounds/tutorial.ogg')
+    intro_voice.loop_phrases = [pygame.mixer.Sound('sounds/reminder.ogg')]
+
     nice_coffee = pygame.mixer.Sound('sounds/actions/nice_coffee.ogg')
     back_to_work = pygame.mixer.Sound('sounds/actions/back_to_work.ogg')
 
-    game = Game(voices, swat_voices)
+    game = Game(voices, swat_voices, intro_voice)
 
     coffee_break_channel = pygame.mixer.Channel(len(game.consoles))
     sfx_channel = pygame.mixer.Channel(len(game.consoles) + 1)
