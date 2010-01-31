@@ -938,7 +938,8 @@ def main():
 
     intro_voice = IntroVoice()
     intro_voice.first_phrase = pygame.mixer.Sound('sounds/intro/tutorial.ogg')
-    intro_voice.loop_phrases = [pygame.mixer.Sound('sounds/intro/reminder.ogg')]
+    reminders = glob.glob('sounds/intro/reminder*.ogg')
+    intro_voice.loop_phrases = map(pygame.mixer.Sound, reminders)
     intro_voice.swat_reaction = pygame.mixer.Sound('sounds/intro/swat_reaction.ogg')
 
     nice_coffee = pygame.mixer.Sound('sounds/actions/nice_coffee.ogg')
