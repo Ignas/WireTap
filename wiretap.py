@@ -6,7 +6,8 @@ import glob
 import sys
 
 import pygame
-from pygame.locals import *
+from pygame.locals import (FULLSCREEN, QUIT, KEYDOWN, MOUSEBUTTONUP,
+                           K_ESCAPE, K_RETURN, K_KP_ENTER, K_PAUSE, KMOD_ALT)
 
 # tell py2exe what we use
 import pygame.mixer
@@ -46,40 +47,26 @@ class SwatVoice(object):
 class Console(object): # aka listening station
 
     disabled = False
+    resting = False
 
     def __init__(self):
         self.listening = False
         self.active = False
-        self.swat_pending = 0
-        self.swat_arrived = False
-        self.swat_active = False
-        self.swat_done = False
+        self.swat_engaged = False
         self.personality = NOBODY
 
     @property
     def speaking(self):
-        return self.active or self.swat_active
-
-    @property
-    def swat_engaged(self):
-        return self.swat_pending or self.swat_active or self.swat_arrived or self.swat_done
+        return self.active or self.swat_engaged
 
     def get_next_phrase(self):
         if self.personality:
             return self.personality.get_next_phrase(self.voice)
 
-    def send_swat(self, delay=3):
-        self.listening = True
-        if not self.swat_engaged:
-            self.swat_pending = delay
-
-    def kill(self):
-        self.active = False
-        self.swat_arrived = True
-
     def move_out(self):
         self.listening = False
         self.active = False
+        self.swat_engaged = False
         self.personality = NOBODY
 
     def toggle_listening(self):
@@ -128,25 +115,123 @@ class ScoreEffect(object):
         self.score = score
 
 
+class PieceOfLogic(object):
+    next = None
+
+
+class Pause(PieceOfLogic):
+
+    def __init__(self, time_left):
+        self.time_left = time_left
+
+    def tick(self, delta_t):
+        self.time_left -= delta_t
+        if self.time_left < 0:
+            self.time_left = 0
+            return False
+        return True
+
+
+class Countdown(Pause):
+
+    def __init__(self, console, time_left):
+        self.console = console
+        self.time_left = time_left
+
+    # TODO: show a countdown
+
+
+class PlaySound(PieceOfLogic):
+
+    def __init__(self, chan, console, sound):
+        self.chan = chan
+        self.console = console
+        self.sound = sound
+        self.playing = False
+
+    def tick(self, delta_t):
+        channel = pygame.mixer.Channel(self.chan)
+        if not self.playing:
+            self.console.active = False
+            channel.play(self.sound)
+            self.playing = True
+            return True
+        elif channel.get_busy():
+            return True
+        else:
+            return False
+
+
+class ScoreLogic(PieceOfLogic):
+
+    def __init__(self, game, console):
+        self.game = game
+        self.console = console
+
+    def tick(self, delta_t):
+        game, console = self.game, self.console
+        game.effects.append(ScoreEffect(console, console.personality.score))
+        game.score += console.personality.score
+        if console.personality is GOOD_GUY:
+            game.good_guys_detained += 1
+        elif console.personality is BAD_GUY:
+            game.bad_guys_caught += 1
+        return False
+
+
+class NextLevel(PieceOfLogic):
+
+    def __init__(self, game):
+        self.game = game
+
+    def tick(self, delta_t):
+        # TODO: big floating "level 3" thingy
+        self.game.next_level()
+        return False
+
+
+class ClearConsole(PieceOfLogic):
+
+    def __init__(self, console):
+        self.console = console
+
+    def tick(self, delta_t):
+        self.console.move_out()
+        self.console.resting = True
+        return False
+
+
+class EmptyConsole(PieceOfLogic):
+
+    def __init__(self, console):
+        self.console = console
+
+    def tick(self, delta_t):
+        self.console.move_out()
+        self.console.resting = False
+        return False
+
+
 class Game(object):
 
-    def __init__(self, voices):
+    time_limit = 300
+    n_consoles = 16
+    initially_disabled = [11, 13]
+
+    def __init__(self, voices, swat_voices):
         self.voices = voices
-        self.consoles = []
+        self.swat_voices = swat_voices
         self.score = 0
-        self.time_limit = 300
         self.level = 0
         self.bad_guys_caught = 0
         self.good_guys_detained = 0
-        self.n_consoles = 16
         self.good_guys = []
         self.effects = []
+        self.logic = []
         self.paused = False
-
-        for n in range(self.n_consoles):
-            self.consoles.append(Console())
-        self.consoles[11].disabled = True
-        self.consoles[13].disabled = True
+        self.consoles = [Console() for n in range(self.n_consoles)]
+        for n in self.initially_disabled:
+            self.consoles[n].disabled = True
 
         self.start()
 
@@ -165,25 +250,37 @@ class Game(object):
     def running(self):
         return not self.paused and not self.over
 
+    @property
+    def swat_voices_with_male_apologies(self):
+        return ([v for v in self.swat_voices if v.apology_phrases_male]
+                or self.swat_voices)
+
+    @property
+    def swat_voices_with_female_apologies(self):
+        return ([v for v in self.swat_voices if v.apology_phrases_female]
+                or self.swat_voices)
+
     def tick(self, delta_t):
         self.time_limit -= delta_t
         if self.time_limit <= 0:
             self.time_limit = 0
             return # end of level
 
-        for c in self.consoles:
-            if c.swat_pending:
-                c.swat_pending -= delta_t
-                if c.swat_pending < 1:
-                    c.swat_pending = False
-                    c.kill()
-            if c.swat_done:
-                c.swat_done = False
-                c.listening = False
-                self.kill_guy(c)
+        next_logic = []
+        for piece in self.logic:
+            if piece.tick(delta_t):
+                next_logic.append(piece)
+            elif piece.next:
+                next_logic.append(piece.next)
+        self.logic = next_logic
+
+    def chain_logic(self, pieces):
+        for n, piece in enumerate(pieces[1:]):
+            pieces[n].next = piece
+        self.logic += pieces[:1]
 
     def get_empty_consoles(self):
-        return [c for c in self.consoles if not c.speaking and not c.disabled]
+        return [c for c in self.consoles if not c.speaking and not c.disabled and not c.resting]
 
     def add_guy(self, personality):
         empty_consoles = self.get_empty_consoles()
@@ -208,17 +305,43 @@ class Game(object):
         console.move_out()
         self.add_good_guy()
 
-    def kill_guy(self, console):
-        self.effects.append(ScoreEffect(console, console.personality.score))
-        self.score += console.personality.score
-        if console.personality is GOOD_GUY:
-            self.good_guys_detained += 1
-        elif console.personality is BAD_GUY:
-            self.bad_guys_caught += 1
-        next_level = console.personality.next_level_on_capture
-        console.move_out()
-        if next_level:
-            self.next_level()
+    def send_swat(self, console):
+        console.listening = True
+        if not console.swat_engaged:
+            console.swat_engaged = True
+            if console.personality is BAD_GUY:
+                voice = random.choice(self.swat_voices)
+                outcome_phrases = voice.gloat_phrases
+            elif console.personality is GOOD_GUY:
+                if console.voice.male:
+                    voice = random.choice(self.swat_voices_with_male_apologies)
+                    outcome_phrases = voice.apology_phrases_male
+                else:
+                    voice = random.choice(self.swat_voices_with_female_apologies)
+                    outcome_phrases = voice.apology_phrases_female
+            else:
+                voice = random.choice(self.swat_voices)
+                outcome_phrases = []
+            n = self.consoles.index(console)
+            logic = [
+                Countdown(console, 3),
+                PlaySound(n, console, random.choice(voice.storm_phrases)),
+                Pause(1.0),
+                ScoreLogic(self, console),
+            ]
+            if outcome_phrases:
+                logic.append(
+                    PlaySound(n, console, random.choice(outcome_phrases)))
+            logic += [
+                ClearConsole(console),
+            ]
+            if console.personality.next_level_on_capture:
+                logic.append(NextLevel(self))
+            logic += [
+                Pause(3.0),
+                EmptyConsole(console),
+            ]
+            self.chain_logic(logic)
 
     def next_level(self):
         db = self.level in (4, 7, 12) and 2 or 1
@@ -415,7 +538,6 @@ class Layout(object):
 
     def draw(self, game, effects):
         screen = self.screen
-        # XXX maybe fill areas outside background, if any
         if self.mode != self.size:
             screen.fill((0, 0, 0))
         screen.blit(self.background, (self.x, self.y))
@@ -505,7 +627,7 @@ class Layout(object):
         if self.in_button(x, y, self.listening_pos, self.listening_size, pos, self.listening_off):
             return lambda: c.toggle_listening()
         if self.in_button(x, y, self.swat_pos, self.swat_size, pos, self.swat_off):
-            return lambda: c.send_swat()
+            return lambda: game.send_swat(c)
 
     def click(self, game, (x, y)):
         action = self.action(game, (x, y))
@@ -623,12 +745,12 @@ def main():
             break
         v.storm_phrases = map(pygame.mixer.Sound, storm)
         v.gloat_phrases = map(pygame.mixer.Sound, gloat)
-        v.apologize_to_male = map(pygame.mixer.Sound, apologize_to_male)
-        v.apologize_to_female = map(pygame.mixer.Sound, apologize_to_female)
+        v.apology_phrases_male = map(pygame.mixer.Sound, apologize_to_male)
+        v.apology_phrases_female = map(pygame.mixer.Sound, apologize_to_female)
         n += 1
         swat_voices.append(v)
 
-    game = Game(voices)
+    game = Game(voices, swat_voices)
 
     effects = []
 
@@ -683,16 +805,7 @@ def main():
             else:
                 channel.set_volume(0.0)
 
-            if c.swat_active and not channel.get_busy():
-                c.swat_active = False
-                c.swat_done = True
-            elif c.swat_arrived:
-                c.swat_arrived = False
-                c.swat_active = True
-                voice = random.choice(swat_voices)
-                phrase = random.choice(voice.storm_phrases)
-                channel.play(phrase)
-            elif c.active and channel.get_queue() is None:
+            if c.active and channel.get_queue() is None:
                 channel.queue(c.get_next_phrase())
 
         # draw
