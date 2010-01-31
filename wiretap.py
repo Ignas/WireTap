@@ -56,6 +56,7 @@ class Console(object): # aka listening station
 
     disabled = False
     resting = False
+    blinking_interval = 0.5
 
     def __init__(self):
         self.listening = False
@@ -63,6 +64,8 @@ class Console(object): # aka listening station
         self.swat_engaged = False
         self.personality = NOBODY
         self.first_phrase = True
+        self.blinking = False
+        self.blinking_time = 0.0
 
     @property
     def speaking(self):
@@ -333,6 +336,13 @@ class Game(object):
             self.time_limit = 0
             return # end of level
 
+        for c in self.consoles:
+            if c.active:
+                c.blinking_time += delta_t
+                if c.blinking_time >= c.blinking_interval:
+                    c.blinking = not c.blinking
+                    c.blinking_time -= c.blinking_interval
+
         next_logic = []
         for piece in self.logic:
             if piece.tick(delta_t):
@@ -356,6 +366,8 @@ class Game(object):
         console = random.choice(empty_consoles)
         console.personality = personality
         console.active = True
+        console.blinking = True
+        console.blinking_time = 0
         console.voice = personality.pick_voice(self.voices, self.intro_voice)
         return console
 
@@ -514,6 +526,7 @@ class Layout(object):
     speaking_pos = 195, 50
     speaking_inactive_src = "graphics/Lamp_inactive.png"
     speaking_active_src = "graphics/Lamp_active.png"
+    speaking_blink_src = "graphics/Lamp_blink.png"
     speaking_red_src = "graphics/Lamp_done.png"
 
     listening_pos = 80, 40
@@ -591,6 +604,7 @@ class Layout(object):
         self.background = pygame.image.load(self.background_src)
         self.speaking_inactive = pygame.image.load(self.speaking_inactive_src)
         self.speaking_active = pygame.image.load(self.speaking_active_src)
+        self.speaking_blink = pygame.image.load(self.speaking_blink_src)
         self.speaking_red = pygame.image.load(self.speaking_red_src)
         self.listening_on = pygame.image.load(self.listening_on_src)
         self.listening_off = pygame.image.load(self.listening_off_src)
@@ -647,7 +661,10 @@ class Layout(object):
             if c.swat_engaged:
                 img = self.speaking_red
             elif c.speaking:
-                img = self.speaking_active
+                if c.blinking:
+                    img = self.speaking_blink
+                else:
+                    img = self.speaking_active
             else:
                 img = self.speaking_inactive
             self.center_img(img, pos, self.speaking_pos)
