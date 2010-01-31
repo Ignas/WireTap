@@ -414,14 +414,14 @@ class Game(object):
                 Pause(1.0),
                 ScoreLogic(self, console),
             ]
+            if console.personality.next_level_on_capture:
+                logic.append(NextLevel(self))
             if outcome_phrases:
                 logic.append(
                     PlaySound(n, console, random.choice(outcome_phrases)))
             logic += [
                 ClearConsole(console),
             ]
-            if console.personality.next_level_on_capture:
-                logic.append(NextLevel(self))
             logic += [
                 Pause(3.0),
                 EmptyConsole(console),
