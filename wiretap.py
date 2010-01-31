@@ -560,13 +560,22 @@ def main():
     n = 1
     while True:
         v = Voice()
-        v.benign_phrases = map(pygame.mixer.Sound,
-                               glob.glob('sounds/p%d_good*.ogg' % n))
-        v.suspicious_phrases = map(pygame.mixer.Sound,
-                                   glob.glob('sounds/p%d_bad*.ogg' % n))
+        good = glob.glob('sounds/voices/p%d_good*.ogg' % n)
+        bad = glob.glob('sounds/voices/p%d_bad*.ogg' % n)
+        v.benign_phrases = map(pygame.mixer.Sound, good)
+        v.suspicious_phrases = map(pygame.mixer.Sound, bad)
         if not v.benign_phrases or not v.suspicious_phrases:
             break
-        v.male = bool(glob.glob('sounds/p%d_*_m.ogg'))
+        v.male = good[0].endswith('_m.ogg')
+        for fn in good + bad:
+            if fn.endswith('_f.ogg'):
+                if v.male:
+                  print "INCONSISTENT VOICE: %s and %s" % (good[0], fn)
+            elif fn.endswith('_m.ogg'):
+                if not v.male:
+                  print "INCONSISTENT VOICE: %s and %s" % (good[0], fn)
+            else:
+              print "UNKNOWN GENDER: %s" % fn
         n += 1
         voices.append(v)
     game = Game(voices)
