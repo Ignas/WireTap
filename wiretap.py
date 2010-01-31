@@ -818,7 +818,12 @@ def main():
         n += 1
         swat_voices.append(v)
 
+    nice_coffee = pygame.mixer.Sound('sounds/actions/nice_coffee.ogg')
+    back_to_work = pygame.mixer.Sound('sounds/actions/back_to_work.ogg')
+
     game = Game(voices, swat_voices)
+
+    coffee_break_channel = pygame.mixer.Channel(len(game.consoles))
 
     effects = []
 
@@ -827,8 +832,11 @@ def main():
     else:
         delta_t = 1.0 / 10 # fps; we don't need much
     last_t = time.time()
+    last_paused = game.paused
+
     layout.draw(game, effects)
     pygame.display.flip()
+
     while True:
         # interact
         for event in pygame.event.get():
@@ -875,6 +883,13 @@ def main():
 
             if c.active and channel.get_queue() is None:
                 channel.queue(c.get_next_phrase())
+
+        if last_paused != game.paused:
+            last_paused = game.paused
+            if game.paused:
+                coffee_break_channel.play(nice_coffee)
+            else:
+                coffee_break_channel.play(back_to_work)
 
         # draw
         layout.draw(game, effects)
