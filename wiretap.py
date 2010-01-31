@@ -432,14 +432,9 @@ class Layout(object):
                 img = self.swat_off
             self.center_img(img, pos, self.swat_pos)
 
-        if game.paused:
-            img = self.coffee_break_on
-        else:
-            img = self.coffee_break_off
-        self.center_img(img, self.pos, self.coffee_break_pos)
-
-        img = self.quit_off
-        self.center_img(img, self.pos, self.quit_pos)
+        if not game.paused:
+            self.center_img(self.coffee_break_off, self.pos,
+                            self.coffee_break_pos)
 
         self.score_text(game.bad_guys_caught, self.bad_guys_color,
                         self.pos, self.bad_guys_pos)
@@ -452,17 +447,29 @@ class Layout(object):
         for e in effects:
             e.draw(self.screen)
 
+        if game.over or game.paused:
+            self.fadeout((0, 0), self.size)
+
         if game.over:
             self.center_text(self.game_over_text, self.game_over_color,
                              self.pos, self.game_over_pos)
         if game.paused:
             self.center_text(self.paused_text, self.paused_color,
                              self.pos, self.paused_pos)
+            self.center_img(self.coffee_break_on, self.pos,
+                            self.coffee_break_pos)
+
+        self.center_img(self.quit_off, self.pos, self.quit_pos)
 
         if self.use_custom_cursor:
             pygame.mouse.set_visible(False)
             self.last_mouse_pos = pygame.mouse.get_pos()
             self.draw_cursor()
+
+    def fadeout(self, pos, size):
+        surf = pygame.Surface(size).convert_alpha()
+        surf.fill((0, 0, 0, 127))
+        self.screen.blit(surf, pos)
 
     def draw_cursor(self):
         x, y = self.last_mouse_pos
@@ -501,8 +508,7 @@ class Layout(object):
 
     def bye(self):
         self.center_text(self.bye_text, self.bye_color, self.pos, self.bye_pos)
-        img = self.quit_on
-        self.center_img(img, self.pos, self.quit_pos)
+        self.center_img(self.quit_on, self.pos, self.quit_pos)
 
         if self.use_custom_cursor:
             self.draw_cursor()
