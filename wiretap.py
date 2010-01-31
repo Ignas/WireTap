@@ -594,6 +594,7 @@ class Layout(object):
 
     time_left_pos = 420, 666
     time_left_color = (255, 255, 255)
+    time_left_low_color = (255, 20, 20)
 
     bad_guys_pos = 733, 658
     bad_guys_color = (25, 255, 25)
@@ -697,9 +698,12 @@ class Layout(object):
                         self.pos, self.bad_guys_pos)
         self.score_text(game.good_guys_detained, self.victims_color,
                         self.pos, self.victims_pos)
+        if game.time_limit < 60:
+            color = self.time_left_low_color
+        else:
+            color = self.time_left_color
         self.score_text('%d:%02d' % divmod(game.time_limit, 60),
-                        self.time_left_color,
-                        self.pos, self.time_left_pos)
+                        color, self.pos, self.time_left_pos)
 
         for e in effects:
             e.draw(self.screen)
