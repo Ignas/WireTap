@@ -256,9 +256,20 @@ Intro/tutorial
 --------------
 
 Welcome to the NSA listening post number seven five three three eleven.  This
-is the best listening post in all of NSA!  ...
+is the best listening post in all of NSA! 
+
+Now you see your work panel. Green light means a listening chanel is active. 
+You can turn it ON and OFF. Listen to as many channels as you can to improve 
+your performance. Your task is to identify persons who use suspicious words 
+like DECEPTION, KILL, BOMB and FIRE. When you spot one - send a SWAT team 
+to his place! Try this button now!
 
 (then looped)
 
-(a longish pause) Go on, what are you waiting for?  Send a SWAT team here.
+(a longish pause) 1. Go on, what are you waiting for?  Send a SWAT team here.
+                  2. Are you still there?
+
+(when swat arrives)  Hey, guys, this is some kind of a mistake!  The button
+was supposed to be disconnected.  I work for the NSA.  No, don't put the
+handcuffs on!  Help!
 

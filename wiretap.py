@@ -390,7 +390,10 @@ class Game(object):
         console.listening = True
         if not console.swat_engaged:
             console.swat_engaged = True
-            if console.personality.gloat:
+            if console.personality is INTRO_GUY:
+                voice = random.choice(self.swat_voices)
+                outcome_phrases = [self.intro_voice.swat_reaction]
+            elif console.personality.gloat:
                 voice = random.choice(self.swat_voices)
                 outcome_phrases = voice.gloat_phrases
             elif console.personality.apologize:
@@ -907,8 +910,9 @@ def main():
         swat_voices.append(v)
 
     intro_voice = IntroVoice()
-    intro_voice.first_phrase = pygame.mixer.Sound('sounds/tutorial.ogg')
-    intro_voice.loop_phrases = [pygame.mixer.Sound('sounds/reminder.ogg')]
+    intro_voice.first_phrase = pygame.mixer.Sound('sounds/intro/tutorial.ogg')
+    intro_voice.loop_phrases = [pygame.mixer.Sound('sounds/intro/reminder.ogg')]
+    intro_voice.swat_reaction = pygame.mixer.Sound('sounds/intro/swat_reaction.ogg')
 
     nice_coffee = pygame.mixer.Sound('sounds/actions/nice_coffee.ogg')
     back_to_work = pygame.mixer.Sound('sounds/actions/back_to_work.ogg')
