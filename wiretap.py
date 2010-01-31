@@ -837,7 +837,6 @@ def main():
 
     nice_coffee = pygame.mixer.Sound('sounds/actions/nice_coffee.ogg')
     back_to_work = pygame.mixer.Sound('sounds/actions/back_to_work.ogg')
-    click_sound = pygame.mixer.Sound('sounds/actions/cik.ogg')
 
     game = Game(voices, swat_voices)
 
@@ -870,9 +869,6 @@ def main():
             if event.type == KEYDOWN and (event.unicode in ('f', 'F') or
                 event.key in (K_RETURN, K_KP_ENTER) and event.mod & KMOD_ALT):
                 layout.toggle_fullscreen()
-            if event.type == MOUSEBUTTONDOWN:
-                if layout.action(game, event.pos):
-                    sfx_channel.play(click_sound)
             if event.type == MOUSEBUTTONUP:
                 layout.click(game, event.pos)
             if DEV_MODE:
