@@ -34,6 +34,15 @@ class Voice(object):
         return self.benign_phrases + self.suspicious_phrases
 
 
+class SwatVoice(object):
+
+    def __init__(self):
+        self.storm_phrases = []
+        self.apology_phrases_male = []
+        self.apology_phrases_female = []
+        self.gloat_phrases = []
+
+
 class Console(object): # aka listening station
 
     disabled = False
@@ -585,10 +594,10 @@ def main():
         v = Voice()
         good = glob.glob('sounds/voices/p%d_good*.ogg' % n)
         bad = glob.glob('sounds/voices/p%d_bad*.ogg' % n)
+        if not good or not bad:
+            break
         v.benign_phrases = map(pygame.mixer.Sound, good)
         v.suspicious_phrases = map(pygame.mixer.Sound, bad)
-        if not v.benign_phrases or not v.suspicious_phrases:
-            break
         v.male = good[0].endswith('_m.ogg')
         for fn in good + bad:
             if fn.endswith('_f.ogg'):
@@ -601,9 +610,25 @@ def main():
               print "UNKNOWN GENDER: %s" % fn
         n += 1
         voices.append(v)
-    game = Game(voices)
 
-    swat_sound = pygame.mixer.Sound('swat.ogg')
+    swat_voices = []
+    n = 1
+    while True:
+        v = SwatVoice()
+        storm = glob.glob('sounds/swat/c%d_gogogo*.ogg' % n)
+        gloat = glob.glob('sounds/swat/c%d_terror*.ogg' % n)
+        apologize_to_male = glob.glob('sounds/swat/c%d_msorry*.ogg' % n)
+        apologize_to_female = glob.glob('sounds/swat/c%d_wsorry*.ogg' % n)
+        if not storm:
+            break
+        v.storm_phrases = map(pygame.mixer.Sound, storm)
+        v.gloat_phrases = map(pygame.mixer.Sound, gloat)
+        v.apologize_to_male = map(pygame.mixer.Sound, apologize_to_male)
+        v.apologize_to_female = map(pygame.mixer.Sound, apologize_to_female)
+        n += 1
+        swat_voices.append(v)
+
+    game = Game(voices)
 
     effects = []
 
@@ -664,7 +689,9 @@ def main():
             elif c.swat_arrived:
                 c.swat_arrived = False
                 c.swat_active = True
-                channel.play(swat_sound)
+                voice = random.choice(swat_voices)
+                phrase = random.choice(voice.storm_phrases)
+                channel.play(phrase)
             elif c.active and channel.get_queue() is None:
                 channel.queue(c.get_next_phrase())
 
