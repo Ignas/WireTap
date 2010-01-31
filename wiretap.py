@@ -19,7 +19,7 @@ import pygame.event
 import pygame.display
 
 
-DEV_MODE = True
+DEV_MODE = False
 SHOW_FPS = False
 
 
@@ -840,6 +840,13 @@ def main():
     layout = Layout()
     if '-w' in sys.argv:
         layout.fullscreen = False
+    if '-d' in sys.argv:
+        global DEV_MODE
+        DEV_MODE = True
+    if '-f' in sys.argv:
+        global SHOW_FPS
+        SHOW_FPS = True
+
     layout.set_mode()
 
     voices = []
@@ -897,16 +904,17 @@ def main():
 
     effects = []
 
+    layout.draw(game, effects)
+    pygame.display.flip()
+
     if layout.use_custom_cursor:
         delta_t = 1.0 / 60 # fps; aim high!
     else:
         delta_t = 1.0 / 10 # fps; we don't need much
+
     last_t = time.time()
     last_paused = game.paused
     last_quitting = False
-
-    layout.draw(game, effects)
-    pygame.display.flip()
 
     while True:
         # interact
