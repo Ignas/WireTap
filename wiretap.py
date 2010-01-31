@@ -385,7 +385,7 @@ class Layout(object):
         self.pos = (self.x, self.y)
 
     def toggle_fullscreen(self):
-        fullscreen = not fullscreen
+        self.fullscreen = not self.fullscreen
         self.set_mode()
 
     def console_pos(self, n):
