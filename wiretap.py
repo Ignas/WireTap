@@ -322,17 +322,17 @@ class Layout(object):
     quit_off_src = "graphics/Quit.png"
     quit_on_src = "graphics/Quit_pressed.png"
 
+    game_over_pos = 512, 280
+    game_over_color = (254, 232, 123)
+    game_over_text = 'Game Over'
+
     bye_pos = 512, 340
     bye_color = (254, 232, 123)
     bye_text = 'Bye!'
 
-    paused_pos = 512, 370
+    paused_pos = 512, 400
     paused_color = (254, 232, 123)
     paused_text = 'Enjoy your coffee!'
-
-    game_over_pos = 512, 310
-    game_over_color = (254, 232, 123)
-    game_over_text = 'Game Over'
 
     cursor_normal_src = "graphics/Cursor.png"
     cursor_normal_hotspot = (9, 2)
@@ -341,6 +341,8 @@ class Layout(object):
 
     font_src = 'fonts/Sniglet.ttf'
     font_size = 24
+    big_font_src = 'fonts/Sniglet.ttf'
+    big_font_size = 48
 
     time_left_pos = 420, 666
     time_left_color = (255, 255, 255)
@@ -370,6 +372,7 @@ class Layout(object):
         self.quit_on = pygame.image.load(self.quit_on_src)
         self.quit_off = pygame.image.load(self.quit_off_src)
         self.font = pygame.font.Font(self.font_src, self.font_size)
+        self.big_font = pygame.font.Font(self. big_font_src, self.big_font_size)
         self.cursor_normal = (pygame.image.load(self.cursor_normal_src),) + self.cursor_normal_hotspot
         self.cursor_button = (pygame.image.load(self.cursor_button_src),) + self.cursor_button_hotspot
         self.cursor = self.cursor_normal
@@ -532,9 +535,9 @@ class Layout(object):
 
     def center_text(self, text, color, pos, delta=(0, 0), shadow=(0, 0, 0)):
         if shadow:
-            img = self.font.render(str(text), True, shadow)
-            self.center_img(img, (pos[0] + 1, pos[1] + 1), delta)
-        img = self.font.render(str(text), True, color)
+            img = self.big_font.render(str(text), True, shadow)
+            self.center_img(img, (pos[0] + 3, pos[1] + 3), delta)
+        img = self.big_font.render(str(text), True, color)
         self.center_img(img, pos, delta)
 
     def score_text(self, text, color, pos, delta=(0, 0)):
