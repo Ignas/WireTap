@@ -253,7 +253,6 @@ class NextLevel(PieceOfLogic):
 
     def tick(self, delta_t):
         self.game.next_level()
-        self.game.effects.append(LevelEffect(self.game.level))
         return False
 
 
@@ -313,7 +312,6 @@ class Game(object):
             self.effects.append(GameStartedEffect())
         else:
             self.next_level()
-            self.effects.append(LevelEffect(self.level))
 
     def quit(self):
         self.quitting = True
@@ -437,7 +435,7 @@ class Game(object):
             ]
             self.chain_logic(logic)
 
-    def next_level(self):
+    def next_level(self, effect=True):
         level = self.level - 1
 
         db = level in (4, 7, 12) and 2 or 1
@@ -459,6 +457,9 @@ class Game(object):
 
         for n in range(mg):
             self.move_good_guy()
+
+        if effect:
+            self.effects.append(LevelEffect(self.level))
 
 
 class ScoreBubble(object):
@@ -591,7 +592,7 @@ class Layout(object):
     restart_color = (254, 232, 123)
     restart_text = 'Press R to play again'
 
-    level_pos = 512, 200
+    level_pos = 512, 160
     level_color = (20, 200, 20)
     level_shadow = (0, 0, 0)
 
