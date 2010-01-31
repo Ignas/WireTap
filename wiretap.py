@@ -110,6 +110,10 @@ BAD_GUY = BadGuy()
 GOOD_GUY = GoodGuy()
 
 
+class GameStartedEffect(object):
+    pass
+
+
 class ScoreEffect(object):
 
     def __init__(self, console, score):
@@ -247,7 +251,7 @@ class Game(object):
         self.bad_guys_caught = 0
         self.good_guys_detained = 0
         self.good_guys = []
-        self.effects = []
+        self.effects = [GameStartedEffect()]
         self.logic = []
         self.paused = False
         self.consoles = [Console() for n in range(self.n_consoles)]
@@ -767,6 +771,15 @@ class Layout(object):
         return ScoreBubble(self.x + x,
                            self.y + y,
                            'Level %d' % ef.level, color, self.big_font,
+                           shadow=shadow, shadow_offset=3)
+
+    def effect_GameStartedEffect(self, game, ef):
+        color = self.level_color
+        shadow = self.level_shadow
+        x, y = self.level_pos
+        return ScoreBubble(self.x + x,
+                           self.y + y,
+                           'Wiretap', color, self.big_font,
                            shadow=shadow, shadow_offset=3)
 
 
