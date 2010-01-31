@@ -964,10 +964,12 @@ def main():
         swat_voices.append(v)
 
     intro_voice = IntroVoice()
-    intro_voice.first_phrase = pygame.mixer.Sound('sounds/intro/tutorial.ogg')
-    reminders = glob.glob('sounds/intro/reminder*.ogg')
+    intro_voice.first_phrase = pygame.mixer.Sound('sounds/intro/tut_how_to_use.ogg')
+    reminders = sorted(glob.glob('sounds/intro/tut_right_left*.ogg'))
     intro_voice.loop_phrases = map(pygame.mixer.Sound, reminders)
-    intro_voice.swat_reaction = pygame.mixer.Sound('sounds/intro/swat_reaction.ogg')
+    intro_voice.swat_reaction = pygame.mixer.Sound('sounds/intro/tut_guys_stop.ogg')
+
+    splash_phrases = sorted(intro_voice.loop_phrases)
 
     nice_coffee = pygame.mixer.Sound('sounds/actions/nice_coffee.ogg')
     back_to_work = pygame.mixer.Sound('sounds/actions/back_to_work.ogg')
@@ -991,6 +993,7 @@ def main():
     last_t = time.time()
     last_paused = game.paused
     last_quitting = False
+    last_splash = False
 
     while True:
         # interact
@@ -1062,6 +1065,16 @@ def main():
 
         if game.quitting and not coffee_break_channel.get_busy():
             return # going_home finished playing
+
+        if last_splash != game.splash:
+            last_splash = game.splash
+            if game.splash:
+                coffee_break_channel.play(splash_phrases[0])
+            else:
+                coffee_break_channel.stop()
+
+        if game.splash and coffee_break_channel.get_queue() is None and splash_phrases:
+            coffee_break_channel.queue(random.choice(splash_phrases))
 
         # draw
         layout.draw(game, effects)
