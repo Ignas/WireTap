@@ -24,6 +24,7 @@ Run wiretap.py.  There are some optional command-line arguments you may
 want to supply:
 
   -w    Start windowed (default: start in full-screen mode)
+  -c    Do not use a fancy cursor (use if the game feels too sluggish)
   -f    Print frame times and frame per second numbers to the console
   -d    Enable development cheat codes:
 

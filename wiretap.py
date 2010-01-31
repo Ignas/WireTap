@@ -615,7 +615,7 @@ class Layout(object):
     victims_pos = 733, 701
     victims_color = (255, 25, 25)
 
-    use_custom_cursor = False
+    use_custom_cursor = True
     fullscreen = True
     mode = size
 
@@ -887,6 +887,8 @@ def main():
     layout = Layout()
     if '-w' in sys.argv:
         layout.fullscreen = False
+    if '-c' in sys.argv:
+        layout.use_custom_cursor = False
     if '-d' in sys.argv:
         global DEV_MODE
         DEV_MODE = True
@@ -894,6 +896,8 @@ def main():
         global SHOW_FPS
         SHOW_FPS = True
 
+    if layout.use_custom_cursor:
+        pygame.mouse.set_visible(False)
     layout.set_mode()
 
     voices = []
