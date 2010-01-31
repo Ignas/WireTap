@@ -600,10 +600,12 @@ class Layout(object):
     cursor_button_src = "graphics/Cursor_hot.png"
     cursor_button_hotspot = (9, 2)
 
-    font_src = 'fonts/Sniglet.ttf'
+    font_src = 'fonts/GenR102.ttf'
     font_size = 24
-    big_font_src = 'fonts/Sniglet.ttf'
+    big_font_src = font_src
     big_font_size = 80
+    score_font_src = font_src
+    score_font_size = 24
 
     time_left_pos = 420, 666
     time_left_color = (255, 255, 255)
@@ -636,6 +638,7 @@ class Layout(object):
         self.quit_on = pygame.image.load(self.quit_on_src)
         self.quit_off = pygame.image.load(self.quit_off_src)
         self.font = pygame.font.Font(self.font_src, self.font_size)
+        self.score_font = pygame.font.Font(self.score_font_src, self.score_font_size)
         self.big_font = pygame.font.Font(self. big_font_src, self.big_font_size)
         self.cursor_normal = (pygame.image.load(self.cursor_normal_src),) + self.cursor_normal_hotspot
         self.cursor_button = (pygame.image.load(self.cursor_button_src),) + self.cursor_button_hotspot
@@ -825,7 +828,7 @@ class Layout(object):
         self.center_img(img, pos, delta)
 
     def score_text(self, text, color, pos, delta=(0, 0)):
-        img = self.font.render(unicode(text), True, color)
+        img = self.score_font.render(unicode(text), True, color)
         self.screen.blit(img, (pos[0] + delta[0] - img.get_width(),
                                pos[1] + delta[1] - img.get_height()))
 
