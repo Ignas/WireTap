@@ -963,13 +963,14 @@ def main():
         n += 1
         swat_voices.append(v)
 
+    splash_sound_files = sorted(glob.glob('sounds/intro/tut_right_left*.ogg'))
+    splash_phrases = map(pygame.mixer.Sound, splash_sound_files)
+
     intro_voice = IntroVoice()
     intro_voice.first_phrase = pygame.mixer.Sound('sounds/intro/tut_how_to_use.ogg')
-    reminders = sorted(glob.glob('sounds/intro/tut_right_left*.ogg'))
+    reminders = glob.glob('sounds/intro/reminder*.ogg') # none currently
     intro_voice.loop_phrases = map(pygame.mixer.Sound, reminders)
     intro_voice.swat_reaction = pygame.mixer.Sound('sounds/intro/tut_guys_stop.ogg')
-
-    splash_phrases = sorted(intro_voice.loop_phrases)
 
     nice_coffee = pygame.mixer.Sound('sounds/actions/nice_coffee.ogg')
     back_to_work = pygame.mixer.Sound('sounds/actions/back_to_work.ogg')
@@ -1049,7 +1050,9 @@ def main():
                 channel.set_volume(0.0)
 
             if c.active and channel.get_queue() is None:
-                channel.queue(c.get_next_phrase())
+                phrase = c.get_next_phrase()
+                if phrase:
+                    channel.queue(phrase)
 
         if last_paused != game.paused:
             last_paused = game.paused
