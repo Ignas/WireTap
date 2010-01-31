@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 import random
 import time
 import glob
@@ -322,7 +323,7 @@ class Layout(object):
     quit_off_src = "graphics/Quit.png"
     quit_on_src = "graphics/Quit_pressed.png"
 
-    game_over_pos = 512, 280
+    game_over_pos = 512, 250
     game_over_color = (254, 232, 123)
     game_over_text = 'Game Over'
 
@@ -330,7 +331,7 @@ class Layout(object):
     bye_color = (254, 232, 123)
     bye_text = 'Bye!'
 
-    paused_pos = 512, 400
+    paused_pos = 512, 430
     paused_color = (254, 232, 123)
     paused_text = 'Enjoy your coffee!'
 
@@ -342,7 +343,7 @@ class Layout(object):
     font_src = 'fonts/Sniglet.ttf'
     font_size = 24
     big_font_src = 'fonts/Sniglet.ttf'
-    big_font_size = 48
+    big_font_size = 80
 
     time_left_pos = 420, 666
     time_left_color = (255, 255, 255)
@@ -534,14 +535,15 @@ class Layout(object):
                                pos[1] + delta[1] - img.get_height() / 2))
 
     def center_text(self, text, color, pos, delta=(0, 0), shadow=(0, 0, 0)):
+        text = unicode(text)
         if shadow:
-            img = self.big_font.render(str(text), True, shadow)
+            img = self.big_font.render(text, True, shadow)
             self.center_img(img, (pos[0] + 3, pos[1] + 3), delta)
-        img = self.big_font.render(str(text), True, color)
+        img = self.big_font.render(text, True, color)
         self.center_img(img, pos, delta)
 
     def score_text(self, text, color, pos, delta=(0, 0)):
-        img = self.font.render(str(text), True, color)
+        img = self.font.render(unicode(text), True, color)
         self.screen.blit(img, (pos[0] + delta[0] - img.get_width(),
                                pos[1] + delta[1] - img.get_height()))
 
