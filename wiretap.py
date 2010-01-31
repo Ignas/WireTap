@@ -2,6 +2,7 @@
 import random
 import time
 import glob
+import sys
 
 import pygame
 from pygame.locals import *
@@ -351,12 +352,11 @@ class Layout(object):
     victims_color = (255, 25, 25)
 
     use_custom_cursor = False
+    fullscreen = True
+    mode = size
 
-    def __init__(self, screen):
-        self.screen = screen
-        self.x = (screen.get_width() - self.size[0]) / 2
-        self.y = (screen.get_height() - self.size[1]) / 2
-        self.pos = (self.x, self.y)
+    def __init__(self):
+        self.sceeen = None
         self.background = pygame.image.load(self.background_src)
         self.speaking_inactive = pygame.image.load(self.speaking_inactive_src)
         self.speaking_active = pygame.image.load(self.speaking_active_src)
@@ -375,6 +375,19 @@ class Layout(object):
         self.cursor = self.cursor_normal
         self.last_mouse_pos = pygame.mouse.get_pos()
 
+    def set_mode(self):
+        if self.fullscreen:
+            self.screen = pygame.display.set_mode(self.mode, FULLSCREEN)
+        else:
+            self.screen = pygame.display.set_mode(self.mode, 0)
+        self.x = (self.screen.get_width() - self.size[0]) / 2
+        self.y = (self.screen.get_height() - self.size[1]) / 2
+        self.pos = (self.x, self.y)
+
+    def toggle_fullscreen(self):
+        fullscreen = not fullscreen
+        self.set_mode()
+
     def console_pos(self, n):
         row, col = divmod(n, self.grid_cols)
         x = self.grid_pos[0] + col * self.grid_cell_size[0]
@@ -390,6 +403,8 @@ class Layout(object):
     def draw(self, game, effects):
         screen = self.screen
         # XXX maybe fill areas outside background, if any
+        if self.mode != self.size:
+            screen.fill((0, 0, 0))
         screen.blit(self.background, (self.x, self.y))
         for n, c in enumerate(game.consoles):
             if c.disabled:
@@ -548,13 +563,10 @@ def main():
     pygame.display.set_caption('Wiretap')
     pygame.mixer.set_num_channels(32)
 
-    MODE = (1024, 768)
-    fullscreen = True
-    screen = pygame.display.set_mode((1024, 768), FULLSCREEN)
-    screen.fill((0, 0, 0))
-
-    layout = Layout(screen)
-    del screen
+    layout = Layout()
+    if '-w' in sys.argv:
+        layout.fullscreen = False
+    layout.set_mode()
 
     voices = []
     n = 1
@@ -604,18 +616,13 @@ def main():
                 game.toggle_paused()
             if event.type == KEYDOWN and (event.unicode in ('f', 'F') or
                 event.key in (K_RETURN, K_KP_ENTER) and event.mod & KMOD_ALT):
-                fullscreen = not fullscreen
-                if fullscreen:
-                    layout.screen = pygame.display.set_mode(MODE, FULLSCREEN)
-                else:
-                    layout.screen = pygame.display.set_mode(MODE, 0)
+                layout.toggle_fullscreen()
             if event.type == MOUSEBUTTONUP:
                 layout.click(game, event.pos)
             if DEV_MODE:
                 if event.type == KEYDOWN and event.unicode in ('d', 'D'):
-                    if fullscreen:
-                        fullscreen = False
-                        layout.screen = pygame.display.set_mode(MODE, 0)
+                    if layout.fullscreen:
+                        layout.toggle_fullscreen()
                     import pdb; pdb.set_trace()
                 if event.type == KEYDOWN and event.unicode in ('g', 'G'):
                     game.add_good_guy()
