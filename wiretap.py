@@ -4,6 +4,7 @@ import random
 import time
 import glob
 import sys
+import math
 
 import pygame
 from pygame.locals import (FULLSCREEN, QUIT, KEYDOWN, MOUSEBUTTONUP,
@@ -115,6 +116,13 @@ class ScoreEffect(object):
         self.score = score
 
 
+class CountdownEffect(object):
+
+    def __init__(self, console, time_left):
+        self.console = console
+        self.time_left = time_left
+
+
 class PieceOfLogic(object):
     next = None
 
@@ -134,11 +142,17 @@ class Pause(PieceOfLogic):
 
 class Countdown(Pause):
 
-    def __init__(self, console, time_left):
+    def __init__(self, game, console, time_left):
+        self.game = game
         self.console = console
         self.time_left = time_left
+        self.first_time = True
 
-    # TODO: show a countdown
+    def tick(self, delta_t):
+        if self.first_time:
+            self.game.effects.append(CountdownEffect(self.console, self.time_left))
+            self.first_time = False
+        return Pause.tick(self, delta_t)
 
 
 class PlaySound(PieceOfLogic):
@@ -306,6 +320,8 @@ class Game(object):
         self.add_good_guy()
 
     def send_swat(self, console):
+        if not console.active:
+            return
         console.listening = True
         if not console.swat_engaged:
             console.swat_engaged = True
@@ -324,7 +340,7 @@ class Game(object):
                 outcome_phrases = []
             n = self.consoles.index(console)
             logic = [
-                Countdown(console, 3),
+                Countdown(self, console, 3),
                 PlaySound(n, console, random.choice(voice.storm_phrases)),
                 Pause(1.0),
                 ScoreLogic(self, console),
@@ -413,6 +429,21 @@ class ScoreBubble(object):
             screen.blit(self.surface, (int(self.x), int(self.y)))
 
 
+class CountdownBubble(ScoreBubble):
+
+    def __init__(self, x, y, color, font, time=3, dx=0, dy=0, shadow=None):
+        ScoreBubble.__init__(self, x, y, "", color, font, time, dx, dy, shadow)
+
+    def draw(self, screen):
+        if self.time_left <= 0:
+            return
+        text = "%d..." % math.ceil(self.time_left)
+        if text != self.text:
+            self.text = text
+            self.set_alpha(1.0) # re-render
+        screen.blit(self.surface, (int(self.x), int(self.y)))
+
+
 class Layout(object):
 
     size = (1024, 768)
@@ -438,12 +469,17 @@ class Layout(object):
     swat_size = 128, 64
     swat_off_src = "graphics/Send_swat.png"
     swat_on_src = "graphics/Send_swat_pressed.png"
+    swat_inactive_src = "graphics/Send_swat_inactive.png"
 
     score_pos = 155, 90
     score_positive_color = (20, 200, 20)
     score_positive_shadow = (0, 20, 0)
     score_negative_color = (200, 20, 20)
     score_negative_shadow = (20, 0, 0)
+
+    countdown_pos = score_pos
+    countdown_color = (200, 200, 200)
+    countdown_shadow = (0, 0, 0)
 
     coffee_break_pos = 132, 651
     coffee_break_size = 128, 64
@@ -500,6 +536,7 @@ class Layout(object):
         self.listening_off = pygame.image.load(self.listening_off_src)
         self.swat_on = pygame.image.load(self.swat_on_src)
         self.swat_off = pygame.image.load(self.swat_off_src)
+        self.swat_inactive = pygame.image.load(self.swat_inactive_src)
         self.coffee_break_on = pygame.image.load(self.coffee_break_on_src)
         self.coffee_break_off = pygame.image.load(self.coffee_break_off_src)
         self.quit_on = pygame.image.load(self.quit_on_src)
@@ -563,8 +600,10 @@ class Layout(object):
 
             if c.swat_engaged:
                 img = self.swat_on
-            else:
+            elif c.active:
                 img = self.swat_off
+            else:
+                img = self.swat_inactive
             self.center_img(img, pos, self.swat_pos)
 
         if not game.paused:
@@ -696,6 +735,16 @@ class Layout(object):
                            self.y + y + self.score_pos[1],
                            '%+d' % ef.score, color, self.font,
                            shadow=shadow)
+
+    def effect_CountdownEffect(self, game, ef):
+        color = self.countdown_color
+        shadow = self.countdown_shadow
+        n = game.consoles.index(ef.console)
+        x, y = self.console_pos(n)
+        return CountdownBubble(self.x + x + self.countdown_pos[0],
+                               self.y + y + self.countdown_pos[1],
+                               color, self.font, time=ef.time_left,
+                               shadow=shadow)
 
 
 def main():
