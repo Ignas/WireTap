@@ -292,6 +292,7 @@ class Game(object):
         self.effects = [GameStartedEffect()]
         self.logic = []
         self.paused = False
+        self.quitting = False
         self.consoles = [Console() for n in range(self.n_consoles)]
         for n in self.initially_disabled:
             self.consoles[n].disabled = True
@@ -302,6 +303,9 @@ class Game(object):
         self.level = 1
         self.add_guy(INTRO_GUY).listening = True
 
+    def quit(self):
+        self.quitting = True
+
     def toggle_paused(self):
         self.paused = not self.paused
 
@@ -311,7 +315,7 @@ class Game(object):
 
     @property
     def running(self):
-        return not self.paused and not self.over
+        return not self.paused and not self.over and not self.quitting
 
     @property
     def swat_voices_with_male_apologies(self):
@@ -662,7 +666,7 @@ class Layout(object):
                 img = self.swat_inactive
             self.center_img(img, pos, self.swat_pos)
 
-        if not game.paused:
+        if not game.paused or game.quitting:
             self.center_img(self.coffee_break_off, self.pos,
                             self.coffee_break_pos)
 
@@ -677,7 +681,7 @@ class Layout(object):
         for e in effects:
             e.draw(self.screen)
 
-        if game.over or game.paused:
+        if not game.running:
             self.fadeout((0, 0), self.size)
 
         if game.over:
@@ -686,14 +690,26 @@ class Layout(object):
         if game.paused:
             self.center_text(self.paused_text, self.paused_color,
                              self.pos, self.paused_pos)
-            self.center_img(self.coffee_break_on, self.pos,
-                            self.coffee_break_pos)
+            if not game.quitting:
+                self.center_img(self.coffee_break_on, self.pos,
+                                self.coffee_break_pos)
 
-        self.center_img(self.quit_off, self.pos, self.quit_pos)
+        if game.quitting:
+            self.center_text(self.bye_text, self.bye_color, self.pos, self.bye_pos)
+            self.center_img(self.quit_on, self.pos, self.quit_pos)
+        else:
+            self.center_img(self.quit_off, self.pos, self.quit_pos)
 
         if self.use_custom_cursor:
             pygame.mouse.set_visible(False)
             self.last_mouse_pos = pygame.mouse.get_pos()
+            self.draw_cursor()
+
+    def bye(self):
+        self.center_text(self.bye_text, self.bye_color, self.pos, self.bye_pos)
+        self.center_img(self.quit_on, self.pos, self.quit_pos)
+
+        if self.use_custom_cursor:
             self.draw_cursor()
 
     def fadeout(self, pos, size):
@@ -708,7 +724,7 @@ class Layout(object):
     def action(self, game, (x, y)):
         if self.in_button(x, y, self.quit_pos, self.quit_size, self.pos, self.quit_off):
             return lambda: pygame.event.post(pygame.event.Event(QUIT))
-        if game.over:
+        if game.over or game.quitting:
             return
         if self.in_button(x, y, self.coffee_break_pos, self.coffee_break_size, self.pos, self.coffee_break_off):
             return game.toggle_paused
@@ -735,13 +751,6 @@ class Layout(object):
             self.cursor = self.cursor_button
         else:
             self.cursor = self.cursor_normal
-
-    def bye(self):
-        self.center_text(self.bye_text, self.bye_color, self.pos, self.bye_pos)
-        self.center_img(self.quit_on, self.pos, self.quit_pos)
-
-        if self.use_custom_cursor:
-            self.draw_cursor()
 
     def in_button(self, x, y, pos, size, delta=(0, 0), button=None):
         if (abs(x - pos[0] - delta[0]) < size[0] / 2 and
@@ -879,6 +888,7 @@ def main():
 
     nice_coffee = pygame.mixer.Sound('sounds/actions/nice_coffee.ogg')
     back_to_work = pygame.mixer.Sound('sounds/actions/back_to_work.ogg')
+    going_home = pygame.mixer.Sound('sounds/actions/I_ll_go_home.ogg')
 
     game = Game(voices, swat_voices, intro_voice)
 
@@ -893,6 +903,7 @@ def main():
         delta_t = 1.0 / 10 # fps; we don't need much
     last_t = time.time()
     last_paused = game.paused
+    last_quitting = False
 
     layout.draw(game, effects)
     pygame.display.flip()
@@ -902,12 +913,14 @@ def main():
         for event in pygame.event.get():
             if event.type == QUIT or event.type == KEYDOWN and (
                 event.key == K_ESCAPE or event.unicode in ('q', 'Q')):
-                layout.bye()
-                pygame.display.update()
-                return
+                if game.quitting:
+                    return
+                else:
+                    game.quit()
             if event.type == KEYDOWN and (event.unicode in ('p', 'P') or
                 event.key == K_PAUSE):
-                game.toggle_paused()
+                if not game.over and not game.quitting:
+                    game.toggle_paused()
             if event.type == KEYDOWN and (event.unicode in ('f', 'F') or
                 event.key in (K_RETURN, K_KP_ENTER) and event.mod & KMOD_ALT):
                 layout.toggle_fullscreen()
@@ -951,6 +964,14 @@ def main():
             else:
                 coffee_break_channel.play(back_to_work)
 
+        if last_quitting != game.quitting:
+            last_quitting = game.quitting
+            if game.quitting:
+                coffee_break_channel.play(going_home)
+
+        if game.quitting and not coffee_break_channel.get_busy():
+            return # going_home finished playing
+
         # draw
         layout.draw(game, effects)
         pygame.display.flip()
@@ -961,7 +982,7 @@ def main():
         time.sleep(dt)
 
         # game logic
-        if game.paused:
+        if not game.running:
             last_t = time.time()
             continue
         dt = time.time() - last_t
