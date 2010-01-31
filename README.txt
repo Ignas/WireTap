@@ -43,11 +43,41 @@ Pause or p     - coffee break
 Alt-Enter or f - toggle fullscreen
 
 
-Authors
--------
+Team oosum
+----------
 
 Eglė Zioma
 Ignas Mikalajūnas
 Marius Gedminas
 Žilvinas Ledas
+
+
+Voice actors
+------------
+
+Denis Akoronka
+Eglė Zioma
+Ignas Mikalajūnas
+Lukas Lukoševičius
+Marius Gedminas
+Žilvinas Ledas
+
+
+Graphics
+--------
+
+Eglė Zioma
+
+
+Programming
+-----------
+
+Ignas Mikalajūnas
+Marius Gedminas
+
+
+Executive Producer
+------------------
+
+Ignas Mikalajūnas
 
