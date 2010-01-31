@@ -147,12 +147,16 @@ class Game(object):
         self.paused = not self.paused
 
     @property
+    def over(self):
+        return self.time_limit <= 0
+
+    @property
     def running(self):
-        return not self.paused and self.time_limit >= 0
+        return not self.paused and not self.over
 
     def tick(self, delta_t):
         self.time_limit -= delta_t
-        if self.time_limit < 0:
+        if self.time_limit <= 0:
             self.time_limit = 0
             return # end of level
 
@@ -433,7 +437,7 @@ class Layout(object):
         for e in effects:
             e.draw(self.screen)
 
-        if game.time_limit <= 0:
+        if game.over:
             t = self.font.render(self.game_over_text, True, self.game_over_color)
             self.center_img(t, self.pos, self.game_over_pos)
         elif game.paused:
@@ -452,6 +456,8 @@ class Layout(object):
     def action(self, game, (x, y)):
         if self.in_button(x, y, self.quit_pos, self.quit_size, self.pos, self.quit_off):
             return lambda: pygame.event.post(pygame.event.Event(QUIT))
+        if game.over:
+            return
         if self.in_button(x, y, self.coffee_break_pos, self.coffee_break_size, self.pos, self.coffee_break_off):
             return game.toggle_paused
         n = self.console_idx(x, y)
