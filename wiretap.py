@@ -536,6 +536,7 @@ class Layout(object):
 
     size = (1024, 768)
 
+    splash_src = "graphics/Starting_screen.png"
     background_src = "graphics/Background.png"
 
     grid_pos = (20, 20)
@@ -598,17 +599,13 @@ class Layout(object):
     restart_color = game_state_color
     restart_text = 'Press R to play again'
 
-    splash_pos = game_over_pos
-    splash_color = game_state_color
-    splash_text = 'Click anywhere to start'
-
     level_pos = 512, 160
     level_color = (20, 200, 20)
     level_shadow = (0, 0, 0)
 
     cursor_normal_src = "graphics/Cursor.png"
     cursor_normal_hotspot = (9, 2)
-    cursor_button_src = "graphics/Cursor_hot.png"
+    cursor_button_src = "graphics/Cursor_on_button.png"
     cursor_button_hotspot = (9, 2)
 
     font_src = 'fonts/GenR102.ttf'
@@ -634,6 +631,7 @@ class Layout(object):
 
     def __init__(self):
         self.sceeen = None
+        self.splash = pygame.image.load(self.splash_src)
         self.background = pygame.image.load(self.background_src)
         self.speaking_inactive = pygame.image.load(self.speaking_inactive_src)
         self.speaking_active = pygame.image.load(self.speaking_active_src)
@@ -685,6 +683,14 @@ class Layout(object):
         screen = self.screen
         if self.mode != self.size:
             screen.fill((0, 0, 0))
+
+        if game.splash:
+            screen.blit(self.splash, (self.x, self.y))
+            if self.use_custom_cursor:
+                self.last_mouse_pos = pygame.mouse.get_pos()
+                self.draw_cursor()
+            return
+
         screen.blit(self.background, (self.x, self.y))
         for n, c in enumerate(game.consoles):
             if c.disabled:
@@ -717,12 +723,9 @@ class Layout(object):
                 img = self.swat_inactive
             self.center_img(img, pos, self.swat_pos)
 
-        if not game.paused or game.quitting or game.splash:
+        if not game.paused or game.quitting:
             self.center_img(self.coffee_break_off, self.pos,
                             self.coffee_break_pos)
-
-        if game.splash:
-            self.center_img(self.quit_off, self.pos, self.quit_pos)
 
         self.score_text(game.bad_guys_caught, self.bad_guys_color,
                         self.pos, self.bad_guys_pos)
@@ -741,10 +744,6 @@ class Layout(object):
         if not game.running:
             self.fadeout((0, 0), self.size)
 
-        if game.splash:
-            self.center_text(self.splash_text, self.splash_color,
-                             self.pos, self.splash_pos)
-
         if game.over:
             self.center_text(self.game_over_text, self.game_over_color,
                              self.pos, self.game_over_pos)
@@ -762,11 +761,10 @@ class Layout(object):
         if game.quitting:
             self.center_text(self.bye_text, self.bye_color, self.pos, self.bye_pos)
             self.center_img(self.quit_on, self.pos, self.quit_pos)
-        elif not game.splash:
+        else:
             self.center_img(self.quit_off, self.pos, self.quit_pos)
 
         if self.use_custom_cursor:
-            pygame.mouse.set_visible(False)
             self.last_mouse_pos = pygame.mouse.get_pos()
             self.draw_cursor()
 
